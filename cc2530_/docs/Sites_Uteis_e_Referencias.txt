@@ -1,0 +1,7 @@
+https://github.com/contiki-os/contiki/wiki/8051-Based-Platforms - LER TUDO!
+
+https://github.com/contiki-os/contiki/wiki/Contiki-Build-System
+
+https://github.com/contiki-os/contiki/wiki/Input-and-output
+
+
