@@ -1,4 +1,4 @@
 ConcretID-HW
 ============
 
-Repositorio de desenvolvimento Hardware Concret-ID
+Repositorio de desenvolvimento Hardware ConcretID
