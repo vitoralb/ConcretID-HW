@@ -141,7 +141,7 @@ int receberDados(unsigned char *buffer, HardwareSerial *porta)
 	count = len;
 	while(count > 0)
 	{
-		if(count > 50){
+		if(count > 32){
 			n = porta->readBytes((char *)buffer_aux, 32);
 
 		} else {
@@ -150,11 +150,9 @@ int receberDados(unsigned char *buffer, HardwareSerial *porta)
 		count -= n;
 		buffer_aux += n;
 
-		/*porta->readBytes((char *)buffer_aux, 1);
-		count--;
-		buffer_aux++;*/
+
 	}
-//	porta->readBytes((char *)buffer, len);
+
 	porta->readBytes((char *)&CRC_LSB, 1);
 	porta->readBytes((char *)&CRC_MSB, 1);
 
