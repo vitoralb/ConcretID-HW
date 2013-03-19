@@ -22,8 +22,13 @@
 #define CMD_SERIAL_GET_INFO 0x01
 #define CMD_SERIAL_SET_WRITE_ADDR 0x02
 #define CMD_SERIAL_SET_READ_ADDR 0x03
-#define CMD_SERIAL_START_WRITE 0x04
-#define CMD_SERIAL_START_READ 0x05
+#define CMD_SERIAL_SET_WRITE_BUFFER 0x04
+#define CMD_SERIAL_SET_READ_BUFFER_LEN 0x05
+#define CMD_SERIAL_START_WRITE 0x06
+#define CMD_SERIAL_START_READ 0x07
+#define CMD_SERIAL_ERASE_CHIP 0x08
+
+#define CMD_SERIAL_ACK 0x09
 
 
 void exit(int i )
@@ -90,20 +95,20 @@ void enviarComando(unsigned char comando, HardwareSerial *porta)
 
 unsigned char receberComando(HardwareSerial *porta)
 {
-	char tipo = 0, comando = 0;
-	porta->readBytes(&tipo, 1);
+	unsigned char tipo = 0, comando = 0;
+	porta->readBytes((char *)&tipo, 1);
 
 	if(tipo != 0x01)
 	{
 		exit(1);
 	}
-	porta->readBytes(&comando, 1);
+	porta->readBytes((char *)&comando, 1);
 
 	return comando;
 }
 
 void enviarDados(unsigned char *buffer, unsigned short len, HardwareSerial *porta){
-	porta->write((byte) 0x00);
+	porta->write((unsigned char) 0x00);
 	porta->write(LOBYTE(len));
 	porta->write(HIBYTE(len));
 	if(porta->write(buffer, len) < len)
@@ -114,26 +119,47 @@ void enviarDados(unsigned char *buffer, unsigned short len, HardwareSerial *port
 
 }
 
-int receberDados(char *buffer, HardwareSerial *porta)
+int receberDados(unsigned char *buffer, HardwareSerial *porta)
 {
-	char tipo;
-	char len_MSB, len_LSB;
-	int len;
-	char CRC_LSB, CRC_MSB;
-	porta->readBytes(&tipo, 1);
+	unsigned char tipo;
+	unsigned char len_MSB, len_LSB;
+	int len = 0;
+	int count = 0;
+	int n = 0;
+	unsigned char CRC_LSB, CRC_MSB;
+	unsigned char *buffer_aux = buffer;
+	porta->readBytes((char *)&tipo, 1);
 	if(tipo != 0x00)
 	{
 		exit(1);
 	}
-	porta->readBytes(&len_LSB, 1);
-	porta->readBytes(&len_MSB, 1);
-	len = (len_MSB | len_LSB);
-	porta->readBytes(buffer, len);
-	porta->readBytes(&CRC_LSB, 1);
-	porta->readBytes(&CRC_MSB, 1);
+	porta->readBytes((char *)&len_LSB, 1);
+	porta->readBytes((char *)&len_MSB, 1);
+	len = len_MSB;
+	len <<= 8;
+	len |= len_LSB;
+	count = len;
+	while(count > 0)
+	{
+		if(count > 50){
+			n = porta->readBytes((char *)buffer_aux, 32);
+
+		} else {
+			n = porta->readBytes((char *)buffer_aux, count);
+		}
+		count -= n;
+		buffer_aux += n;
+
+		/*porta->readBytes((char *)buffer_aux, 1);
+		count--;
+		buffer_aux++;*/
+	}
+//	porta->readBytes((char *)buffer, len);
+	porta->readBytes((char *)&CRC_LSB, 1);
+	porta->readBytes((char *)&CRC_MSB, 1);
 
 
-	if(!checarChecksum((unsigned char*)buffer, len, CRC_LSB, CRC_MSB))
+	if(!checarChecksum(buffer, len, CRC_LSB, CRC_MSB))
 	{
 		exit(1);
 	}

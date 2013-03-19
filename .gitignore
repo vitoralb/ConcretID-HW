@@ -29,7 +29,6 @@ summary
 *.faillog
 obj_*
 symbols.*
-Makefile.target
 doc/html
 patches-*
 tools/tunslip6
@@ -58,7 +57,6 @@ contiki-cc2530dk.lib
 *.cdb
 *.banks
 *.sensinode
-*.cc2530dk
 
 # VC++ build artifacts
 *.exp
@@ -77,3 +75,11 @@ contiki-cc2530dk.lib
 *.d64
 *.d71
 *.d81
+
+#eclipse project files
+.project
+.cproject
+.settings
+/Debug
+/Release
+

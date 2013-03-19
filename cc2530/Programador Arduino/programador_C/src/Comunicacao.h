@@ -22,8 +22,13 @@
 #define CMD_SERIAL_GET_INFO 0x01
 #define CMD_SERIAL_SET_WRITE_ADDR 0x02
 #define CMD_SERIAL_SET_READ_ADDR 0x03
-#define CMD_SERIAL_START_WRITE 0x04
-#define CMD_SERIAL_START_READ 0x05
+#define CMD_SERIAL_SET_WRITE_BUFFER 0x04
+#define CMD_SERIAL_SET_READ_BUFFER_LEN 0x05
+#define CMD_SERIAL_START_WRITE 0x06
+#define CMD_SERIAL_START_READ 0x07
+#define CMD_SERIAL_ERASE_CHIP 0x08
+
+#define CMD_SERIAL_ACK 0x09
 
 
 unsigned int uiCrc16Cal(unsigned char const  * pucY, unsigned short ucX)
@@ -105,7 +110,7 @@ int receberDados(unsigned char *buffer, int COM_portNumber)
 {
 	unsigned char tipo;
 	unsigned char len_MSB, len_LSB;
-	unsigned int len, i;
+	unsigned int len;
 	unsigned char CRC_LSB, CRC_MSB;
 	tipo = RS232_ReadByte(COM_portNumber);
 	if(tipo != 0x00)
@@ -115,8 +120,10 @@ int receberDados(unsigned char *buffer, int COM_portNumber)
 	}
 	len_LSB = RS232_ReadByte(COM_portNumber);
 	len_MSB = RS232_ReadByte(COM_portNumber);
-	len = (len_MSB | len_LSB);
 
+	len = len_MSB;
+	len <<= 8;
+	len |= len_LSB;
 
 	RS232_ReadBuffer(COM_portNumber, buffer, len);
 
