@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, George Oikonomou - <oikonomou@users.sourceforge.net>
+ * Copyright (c) 2010, Loughborough University - Computer Science
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,23 +31,19 @@
 
 /**
  * \file
- *         Init routine for the cc2530 SoC
- *
- *         Bankable
+ *         Project specific configuration defines for the border router /
+ *         slip bridge example for cc253x.
  *
  * \author
  *         George Oikonomou - <oikonomou@users.sourceforge.net>
  */
-#include "cc253x.h"
-#include "8051def.h"
-#include "sfr-bits.h"
 
-void
-soc_init()
-{
-  /* Flash: Cache with Pre-fetch */
-  FCTL = FCTL_CM1;
+#ifndef PROJECT_CONF_H_
+#define PROJECT_CONF_H_
 
-  /* Enable Global Interrupt */
-  ENABLE_INTERRUPTS();
-}
+#define LPM_CONF_MODE 0
+#define STARTUP_CONF_VERBOSE 1
+
+
+
+#endif /* PROJECT_CONF_H_ */

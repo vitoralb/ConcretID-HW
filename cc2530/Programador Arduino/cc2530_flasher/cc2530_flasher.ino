@@ -9,7 +9,7 @@
 #define RESET_N                     12 // Porta 4
 // Start addresses on DUP (Increased buffer size improves performance)
 #define ADDR_BUF0                   0x0000 // Buffer (512 bytes)
-#define ADDR_DMA_DESC_0             0x0200 // DMA descriptors (8 bytes)
+#define ADDR_DMA_DESC_0             0x0800 // DMA descriptors (8 bytes)
 #define ADDR_DMA_DESC_1             (ADDR_DMA_DESC_0 + 8)
 
 // DMA channels used on DUP
@@ -98,11 +98,11 @@ const unsigned char dma_desc_1[8] =
 		18,                             // trigger: FLASH
 		0x42,                           // increment source
 		};
-static unsigned char buffer[1024];
+static unsigned char buffer[1536];
 
-unsigned short write_addr = 0;
+unsigned long write_addr = 0;
 unsigned short write_count = 0;
-unsigned short read_addr = 0;
+unsigned long read_addr = 0;
 unsigned short read_count = 0;
 unsigned char chip_id = 0;
 unsigned char debug_config = 0;
@@ -557,7 +557,7 @@ void setup()
 
 
 
-	Serial.begin(4800);
+	Serial.begin(9600);
 
 	/****************************************
 	 * Initialize programmer
@@ -611,7 +611,9 @@ void loop()
 		break;
 	case CMD_SERIAL_SET_WRITE_ADDR:
 		receberDados(buffer, &Serial);
-		write_addr = buffer[1];
+		write_addr = buffer[2];
+		write_addr <<= 8;
+		write_addr |= buffer[1];
 		write_addr <<= 8;
 		write_addr |= buffer[0];
 		enviarComando(CMD_SERIAL_ACK, &Serial);

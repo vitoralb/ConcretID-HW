@@ -10,13 +10,15 @@
 #include "rs232.h"
 #include "Comunicacao.h"
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 1536
 
 int main(int argc, char **argv)
 {
+//	FILE *fin = fopen("blink-hello.bin", "rb");
 //	FILE *fin = fopen("hello-world.bin", "rb");
-	FILE *fin = fopen("blinkp01.bin", "rb");
-	FILE *fout = fopen("saida.txt", "w");
+//	FILE *fin = fopen("cc2530teste.bin", "rb");
+	FILE *fin = fopen("server.bin", "rb");
+	fpos_t fpos;
 	int file_size = 0;
 	int count = 0;
 	unsigned char buffer[BUFFER_SIZE];
@@ -25,13 +27,14 @@ int main(int argc, char **argv)
 	int COM_portNumber = 24; // /dev/ttyACM0
 	//int c = 0;
 
+	fgetpos(fin, &fpos);
 	fseek(fin, 0L, SEEK_END);
 	file_size = ftell(fin);
-	fclose(fin);
-	fin = fopen("blinkp01.bin", "rb");
+	fsetpos(fin, &fpos);
+
 	printf("Tamanho do arquivo: %d bytes\n", file_size);
 
-	if (RS232_OpenComport(COM_portNumber, 4800))
+	if (RS232_OpenComport(COM_portNumber, 9600))
 	{
 		printf("Erro ao abrir a porta serial!\n");
 		exit(1);
@@ -92,12 +95,13 @@ int main(int argc, char **argv)
 		printf("Chip Apagado Completamente!\n");
 	}
 
-	while ((n = read(fileno(fin), buffer, BUFFER_SIZE)))
+	while ((n = fread(buffer, sizeof(unsigned char), BUFFER_SIZE, fin)))
 	{
 		enviarComando(CMD_SERIAL_SET_WRITE_ADDR, COM_portNumber);
-		buf_aux[0] = LOBYTE(count);
-		buf_aux[1] = HIBYTE(count);
-		enviarDados(buf_aux, 2, COM_portNumber);
+		buf_aux[0] = (unsigned char)(count & 0x000000FF);
+		buf_aux[1] = (unsigned char)((count & 0x0000FF00) >> 8);
+		buf_aux[2] = (unsigned char)((count & 0x00030000) >> 16);
+		enviarDados(buf_aux, 3, COM_portNumber);
 		if (receberComando(COM_portNumber) != CMD_SERIAL_ACK)
 		{
 			printf(
@@ -132,9 +136,9 @@ int main(int argc, char **argv)
 
 	}
 
-	printf("\nCount: %d\n", count);
+	printf("100%%");
+	printf("\n%d bytes escritos.\n", count);
 	fclose(fin);
-	fclose(fout);
 
 	return 0;
 }

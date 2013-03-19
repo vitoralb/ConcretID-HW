@@ -143,6 +143,7 @@ set_rime_addr(void) CC_NON_BANKED
 int
 main(void) CC_NON_BANKED
 {
+	int i;
   /* Hardware initialization */
   clock_init();
   soc_init();
@@ -153,7 +154,10 @@ main(void) CC_NON_BANKED
   /* Init LEDs here */
   leds_init();
   leds_off(LEDS_ALL);
-  fade(LEDS_GREEN);
+
+
+  for(i = 0; i < 5; i++)
+	  fade(LEDS_GREEN);
 
   /* initialize process manager. */
   process_init();
