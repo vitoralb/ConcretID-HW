@@ -1,9 +1,7 @@
-#include <SoftwareSerial.h>
 
 #define PRESET_VALUE 0xFFFF
 #define POLYNOMIAL  0x8408
 
-SoftwareSerial mySerial(10, 11); // RX, TX
 
 int i = 0;
 
@@ -34,7 +32,7 @@ unsigned int uiCrc16Cal(unsigned char const  * pucY, unsigned char ucX)
 return uiCrcValue;
 }
 
-void enviarChecksum(unsigned char const  * buffer, unsigned char len, SoftwareSerial *porta){
+void enviarChecksum(unsigned char const  * buffer, unsigned char len, HardwareSerial *porta){
   unsigned int crc = uiCrc16Cal(buffer, len);
   unsigned char CRC_MSB = 0;
   unsigned char CRC_LSB = 0;
@@ -48,12 +46,12 @@ void enviarChecksum(unsigned char const  * buffer, unsigned char len, SoftwareSe
 
 void print_serial()
 {
-  while(!mySerial.available());
-  while(mySerial.available()){
-    if (mySerial.available()){
+  while(!Serial1.available());
+  while(Serial1.available()){
+    if (Serial1.available()){
       Serial.print(i++);
       Serial.print(" - Serial2: ");
-      Serial.print(mySerial.read(), HEX);
+      Serial.print(Serial1.read(), HEX);
       Serial.println("");
     }
   }
@@ -69,33 +67,38 @@ void setup()
   }
 
 
-  Serial.println("Sniffando: ");
+  Serial.println("InicioSerial0 ");
 
-  // set the data rate for the SoftwareSerial port
-  mySerial1.begin(57600);
-  mySerial.begin(57600);
-  
-   
+  Serial1.begin(57600);
+  while (!Serial1) {
+    ; // wait for serial port to connect. Needed for Leonardo only
+  }
 
-  
+
   Serial.println("Pedindo informacoes do leitor...");
-    mySerial.write(getReaderInfo, 3);
-    enviarChecksum(getReaderInfo, 3, &mySerial);
+    Serial1.write(getReaderInfo, 3);
+    enviarChecksum(getReaderInfo, 3, &Serial1);
     print_serial();
   
-   Serial.println("Desligando o buzzer do leitor..."); //Não funciona =/, só serve pra se quiser apitar o buzzer interno (alterando os parametros).
-   mySerial.write(buzzer, 6);
-    enviarChecksum(buzzer, 6, &mySerial);
-    print_serial();
+  /* Serial.println("Desligando o buzzer do leitor..."); //Não funciona =/, só serve pra se quiser apitar o buzzer interno (alterando os parametros).
+   Serial1.write(buzzer, 6);
+    enviarChecksum(buzzer, 6, &Serial1);
+    print_serial();  */
   
 }
 
 void loop(){
     Serial.println("Pedindo inventorio do leitor...");
-    mySerial.write(inventory, 3);
-    enviarChecksum(inventory, 3, &mySerial);
+    Serial1.write(inventory, 3);
+    enviarChecksum(inventory, 3, &Serial1);
 
     print_serial();
-  delay(200);
+  delay(3000); 
+  
+
+  delay (200);  
+  
+ 
 }
+
 
