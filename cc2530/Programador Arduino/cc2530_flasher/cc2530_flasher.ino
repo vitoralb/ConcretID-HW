@@ -104,6 +104,10 @@ unsigned long write_addr = 0;
 unsigned short write_count = 0;
 unsigned long read_addr = 0;
 unsigned short read_count = 0;
+unsigned char read_bank = 0;
+unsigned short read_xaddr = 0;
+unsigned short read_len = 0;
+unsigned short read_total = 0;
 unsigned char chip_id = 0;
 unsigned char debug_config = 0;
 unsigned char chipinfo0 = 0;
@@ -623,6 +627,13 @@ void loop()
 		enviarComando(CMD_SERIAL_ACK, &Serial);
 		break;
 	case CMD_SERIAL_SET_READ_ADDR:
+		receberDados(buffer, &Serial);
+		read_addr = buffer[2];
+		read_addr <<= 8;
+		read_addr |= buffer[1];
+		read_addr <<= 8;
+		read_addr |= buffer[0];
+		enviarComando(CMD_SERIAL_ACK, &Serial);
 		break;
 	case CMD_SERIAL_START_WRITE:
 		// Enable DMA (Disable DMA_PAUSE bit in debug configuration)
@@ -633,8 +644,30 @@ void loop()
 		enviarComando(CMD_SERIAL_ACK, &Serial);
 		break;
 	case CMD_SERIAL_START_READ:
+		// DMA ja ativo de quando escreveu
+		receberDados(buffer, &Serial);
+		read_count |= buffer[1];
+		read_count <<= 8;
+		read_count |= buffer[0];
 		// Read 4 bytes starting at flash address 0x0100 (flash bank 0)
-		// read_flash_memory_block(0, 0x0100, 4, read_data); // Bank, address, count, dest.
+		// considerando bancos de 32KB (enderecos no xdata vai de 0x8000 a oxffff) sequenciais e enderecado por byte
+		read_bank = (unsigned char)(read_addr>>15);
+		read_xaddr = (unsigned short)(read_addr & 0x7fff);
+		read_total = 0;
+		while( read_count ) {
+			if( (unsigned long)read_xaddr + (unsigned long)read_count < 0x8000 ) {
+				read_len = read_count;
+			} else {
+				read_len = 0x8000 - read_xaddr;
+			}
+			read_flash_memory_block(read_bank, read_xaddr, read_len, buffer + read_total); // Bank, address, count, dest.
+			read_total += read_len;
+			read_count -= read_len;
+			read_xaddr = 0;
+			read_bank++;
+		};
+		enviarDados(buffer, read_total, &Serial);
+		enviarComando(CMD_SERIAL_ACK, &Serial);
 		break;
 	case CMD_SERIAL_ERASE_CHIP:
 		// Erase entire chip memory
