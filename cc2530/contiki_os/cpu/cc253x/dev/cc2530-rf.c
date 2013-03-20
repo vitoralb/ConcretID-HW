@@ -165,6 +165,7 @@ cc2530_rf_set_addr(uint16_t pan)
 static int
 init(void)
 {
+	static uint8_t i = 0;
   PUTSTRING("RF: Init\n");
 
   if(rf_flags & RF_ON) {
@@ -191,6 +192,17 @@ init(void)
   TXFILTCFG = 0x09; /* TX anti-aliasing filter */
   AGCCTRL1 = 0x15;  /* AGC target value */
   FSCAL1 = 0x00;    /* Reduce the VCO leakage */
+
+  //TODO Arrumar isso aqui
+  AGCCTRL1  = 0x15;
+  FSCAL1 = 0x0;
+  RFC_OBS_CTRL0 = 0x68;
+  RFC_OBS_CTRL1 = 0x6A;
+  OBSSEL1 = 0xFB;
+  OBSSEL4 = 0xFC;
+  P0DIR |= 0x80;
+
+  P0_7 = 1; for (i=0; i<16; i++);
 
   /* Auto ACKs and CRC calculation, default RX and TX modes with FIFOs */
   FRMCTRL0 = FRMCTRL0_AUTOCRC;

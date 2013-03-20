@@ -17,7 +17,9 @@ int main(int argc, char **argv)
 //	FILE *fin = fopen("blink-hello.bin", "rb");
 //	FILE *fin = fopen("hello-world.bin", "rb");
 //	FILE *fin = fopen("cc2530teste.bin", "rb");
-	FILE *fin = fopen("server.bin", "rb");
+//	FILE *fin = fopen("server.bin", "rb");
+
+	FILE *fin = fopen("client.bin", "rb");
 	fpos_t fpos;
 	int file_size = 0;
 	int count = 0;
@@ -34,7 +36,7 @@ int main(int argc, char **argv)
 
 	printf("Tamanho do arquivo: %d bytes\n", file_size);
 
-	if (RS232_OpenComport(COM_portNumber, 9600))
+	if (RS232_OpenComport(COM_portNumber, 4800))
 	{
 		printf("Erro ao abrir a porta serial!\n");
 		exit(1);
@@ -133,6 +135,7 @@ int main(int argc, char **argv)
 
 
 		printf("%d%%\r", (int)((((double)count)/file_size) * 100));
+		fflush(stdout);
 		count += n;
 
 	}
@@ -140,7 +143,7 @@ int main(int argc, char **argv)
 	printf("100%%");
 	printf("\n%d bytes escritos.\n", count);
 	
-	fseek(fin, 0L, SEEK_SET);
+	fsetpos(fin, &fpos);
 	count = 0;
 	while ((n = fread(buffer, sizeof(unsigned char), BUFFER_SIZE, fin)))
 	{

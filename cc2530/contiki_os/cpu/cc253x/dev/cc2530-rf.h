@@ -55,7 +55,7 @@
 #ifdef CC2530_RF_CONF_CCA_THRES
 #define CC2530_RF_CCA_THRES CC2530_RF_CONF_CCA_THRES
 #else
-#define CC2530_RF_CCA_THRES CCA_THRES_USER_GUIDE /* User guide recommendation */
+#define CC2530_RF_CCA_THRES CCA_THR_HGM /* User guide recommendation */
 #endif /* CC2530_RF_CONF_CCA_THRES */
 
 #ifdef CC2530_RF_CONF_CHANNEL
