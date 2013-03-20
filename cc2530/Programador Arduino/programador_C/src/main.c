@@ -21,9 +21,9 @@ int main(int argc, char **argv)
 	fpos_t fpos;
 	int file_size = 0;
 	int count = 0;
-	unsigned char buffer[BUFFER_SIZE];
+	static unsigned char buffer[BUFFER_SIZE], buffer2[BUFFER_SIZE];
 	unsigned char buf_aux[4];
-	int n = 0;
+	int n = 0, i;
 	int COM_portNumber = 24; // /dev/ttyACM0
 	//int c = 0;
 
@@ -107,6 +107,7 @@ int main(int argc, char **argv)
 			printf(
 					"Erro de comunicacao! Ack nao recebido CMD_SERIAL_SET_WRITE_ADDR\n");
 		}
+		// realmente necessario?
 		if (n % 4 != 0)
 		{
 			while (n % 4 != 0 && n <= BUFFER_SIZE)
@@ -131,15 +132,67 @@ int main(int argc, char **argv)
 		}
 
 
-		printf("%d%%\n", (int)((((double)count)/file_size) * 100));
+		printf("%d%%\r", (int)((((double)count)/file_size) * 100));
 		count += n;
 
 	}
 
 	printf("100%%");
 	printf("\n%d bytes escritos.\n", count);
+	
+	fseek(fin, 0L, SEEK_SET);
+	count = 0;
+	while ((n = fread(buffer, sizeof(unsigned char), BUFFER_SIZE, fin)))
+	{
+		enviarComando(CMD_SERIAL_SET_READ_ADDR, COM_portNumber);
+		buf_aux[0] = (unsigned char)(count & 0x000000FF);
+		buf_aux[1] = (unsigned char)((count & 0x0000FF00) >> 8);
+		buf_aux[2] = (unsigned char)((count & 0x00030000) >> 16);
+		enviarDados(buf_aux, 3, COM_portNumber);
+		if (receberComando(COM_portNumber) != CMD_SERIAL_ACK)
+		{
+			printf(
+					"Erro de comunicacao! Ack nao recebido CMD_SERIAL_SET_READ_ADDR\n");
+		}
+		// realmente necessario?
+		if (n % 4 != 0)
+		{
+			while (n % 4 != 0 && n <= BUFFER_SIZE)
+			{
+				buffer[n] = 0;
+				n++;
+			}
+		}
+		enviarComando(CMD_SERIAL_START_READ, COM_portNumber);
+		buf_aux[0] = (unsigned char)(n & 0x000000FF);
+		buf_aux[1] = (unsigned char)((n & 0x0000FF00) >> 8);
+		enviarDados(buffer, 2, COM_portNumber);
+		if (receberDados(buffer2, COM_portNumber) != n)
+		{
+			printf("Erro de comunicacao! Esperado %d bytes\n", n);
+		}
+		for( i = 0 ; i < n ; ++i ) if( buffer[i] != buffer2[i] ) {
+			printf(
+					"Erro de verificacao! Conteudo recebido apos escrita diferente do esperado\n");
+			break;
+		}
+		
+		if (receberComando(COM_portNumber) != CMD_SERIAL_ACK)
+		{
+			printf(
+					"Erro de comunicacao! Ack nao recebido CMD_SERIAL_START_READ\n");
+		}
+
+
+		printf("%d%%\r", (int)((((double)count)/file_size) * 100));
+		count += n;
+
+	}
+	
+	printf("100%%");
+	printf("\n%d bytes verificados.\n", count);
+	
 	fclose(fin);
 
 	return 0;
 }
-
