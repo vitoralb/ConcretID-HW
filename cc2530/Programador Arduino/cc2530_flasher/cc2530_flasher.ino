@@ -547,8 +547,8 @@ void write_flash_memory_block(unsigned char *src, unsigned long start_addr,
 	write_xdata_memory(DUP_FCTL, 0x06);
 
 	// 7. Wait until flash controller is done
-	while (read_xdata_memory(DUP_FCTL) & 0x80)
-		;
+	while (read_xdata_memory(DUP_FCTL) & 0x80);
+
 }
 
 /**************************************************************************//**
@@ -561,7 +561,7 @@ void setup()
 
 
 
-	Serial.begin(9600);
+	Serial.begin(115200);
 
 	/****************************************
 	 * Initialize programmer
@@ -595,10 +595,7 @@ void setup()
 
 void loop()
 {
-	while (!Serial.available())
-	{
-		delay(100);
-	}
+	while (!Serial.available());
 
 	comando = receberComando(&Serial);
 
@@ -635,10 +632,13 @@ void loop()
 		read_addr |= buffer[0];
 		enviarComando(CMD_SERIAL_ACK, &Serial);
 		break;
-	case CMD_SERIAL_START_WRITE:
+	case CMD_SERIAL_ENABLE_DMA:
 		// Enable DMA (Disable DMA_PAUSE bit in debug configuration)
 		debug_config = 0x22;
 		debug_command(CMD_WR_CONFIG, &debug_config, 1);
+		enviarComando(CMD_SERIAL_ACK, &Serial);
+		break;
+	case CMD_SERIAL_START_WRITE:
 		// Program data (start address must be word aligned [32 bit])
 		write_flash_memory_block(buffer, write_addr, write_count); // src, address, count
 		enviarComando(CMD_SERIAL_ACK, &Serial);
@@ -646,10 +646,9 @@ void loop()
 	case CMD_SERIAL_START_READ:
 		// DMA ja ativo de quando escreveu
 		receberDados(buffer, &Serial);
-		read_count |= buffer[1];
+		read_count = buffer[1];
 		read_count <<= 8;
 		read_count |= buffer[0];
-		// Read 4 bytes starting at flash address 0x0100 (flash bank 0)
 		// considerando bancos de 32KB (enderecos no xdata vai de 0x8000 a oxffff) sequenciais e enderecado por byte
 		read_bank = (unsigned char)(read_addr>>15);
 		read_xaddr = (unsigned short)(read_addr & 0x7fff);

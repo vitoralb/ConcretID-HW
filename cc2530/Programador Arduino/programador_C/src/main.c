@@ -17,15 +17,17 @@ int main(int argc, char **argv)
 //	FILE *fin = fopen("blink-hello.bin", "rb");
 //	FILE *fin = fopen("hello-world.bin", "rb");
 //	FILE *fin = fopen("cc2530teste.bin", "rb");
-//	FILE *fin = fopen("server.bin", "rb");
+	FILE *fin = fopen("server.bin", "rb");
 
-	FILE *fin = fopen("client.bin", "rb");
+//	FILE *fin = fopen("client.bin", "rb");
+//	FILE *fin = fopen("main.bin", "rb");
+
 	fpos_t fpos;
 	int file_size = 0;
 	int count = 0;
 	static unsigned char buffer[BUFFER_SIZE], buffer2[BUFFER_SIZE];
 	unsigned char buf_aux[4];
-	int n = 0, i;
+	int n = 0, i, n_aux;
 	int COM_portNumber = 24; // /dev/ttyACM0
 	//int c = 0;
 
@@ -36,7 +38,7 @@ int main(int argc, char **argv)
 
 	printf("Tamanho do arquivo: %d bytes\n", file_size);
 
-	if (RS232_OpenComport(COM_portNumber, 4800))
+	if (RS232_OpenComport(COM_portNumber, 115200))
 	{
 		printf("Erro ao abrir a porta serial!\n");
 		exit(1);
@@ -97,12 +99,19 @@ int main(int argc, char **argv)
 		printf("Chip Apagado Completamente!\n");
 	}
 
+	enviarComando(CMD_SERIAL_ENABLE_DMA, COM_portNumber);
+	if (receberComando(COM_portNumber) != CMD_SERIAL_ACK)
+	{
+		printf(
+				"Erro de comunicacao! Ack nao recebido CMD_SERIAL_ENABLE_DMA\n");
+	}
+
 	while ((n = fread(buffer, sizeof(unsigned char), BUFFER_SIZE, fin)))
 	{
 		enviarComando(CMD_SERIAL_SET_WRITE_ADDR, COM_portNumber);
-		buf_aux[0] = (unsigned char)(count & 0x000000FF);
-		buf_aux[1] = (unsigned char)((count & 0x0000FF00) >> 8);
-		buf_aux[2] = (unsigned char)((count & 0x00030000) >> 16);
+		buf_aux[0] = (unsigned char) (count & 0x000000FF);
+		buf_aux[1] = (unsigned char) ((count & 0x0000FF00) >> 8);
+		buf_aux[2] = (unsigned char) ((count & 0x00030000) >> 16);
 		enviarDados(buf_aux, 3, COM_portNumber);
 		if (receberComando(COM_portNumber) != CMD_SERIAL_ACK)
 		{
@@ -133,24 +142,22 @@ int main(int argc, char **argv)
 					"Erro de comunicacao! Ack nao recebido CMD_SERIAL_START_WRITE\n");
 		}
 
-
-		printf("%d%%\r", (int)((((double)count)/file_size) * 100));
-		fflush(stdout);
+		printf("%d%%\n", (int) ((((double) count) / file_size) * 100));
 		count += n;
 
 	}
 
 	printf("100%%");
 	printf("\n%d bytes escritos.\n", count);
-	
+
 	fsetpos(fin, &fpos);
 	count = 0;
 	while ((n = fread(buffer, sizeof(unsigned char), BUFFER_SIZE, fin)))
 	{
 		enviarComando(CMD_SERIAL_SET_READ_ADDR, COM_portNumber);
-		buf_aux[0] = (unsigned char)(count & 0x000000FF);
-		buf_aux[1] = (unsigned char)((count & 0x0000FF00) >> 8);
-		buf_aux[2] = (unsigned char)((count & 0x00030000) >> 16);
+		buf_aux[0] = (unsigned char) (count & 0x000000FF);
+		buf_aux[1] = (unsigned char) ((count & 0x0000FF00) >> 8);
+		buf_aux[2] = (unsigned char) ((count & 0x00030000) >> 16);
 		enviarDados(buf_aux, 3, COM_portNumber);
 		if (receberComando(COM_portNumber) != CMD_SERIAL_ACK)
 		{
@@ -167,34 +174,37 @@ int main(int argc, char **argv)
 			}
 		}
 		enviarComando(CMD_SERIAL_START_READ, COM_portNumber);
-		buf_aux[0] = (unsigned char)(n & 0x000000FF);
-		buf_aux[1] = (unsigned char)((n & 0x0000FF00) >> 8);
-		enviarDados(buffer, 2, COM_portNumber);
-		if (receberDados(buffer2, COM_portNumber) != n)
+		buf_aux[0] = (unsigned char) (n & 0x000000FF);
+		buf_aux[1] = (unsigned char) ((n & 0x0000FF00) >> 8);
+		enviarDados(buf_aux, 2, COM_portNumber);
+		if ((n_aux = receberDados(buffer2, COM_portNumber)) != n)
 		{
-			printf("Erro de comunicacao! Esperado %d bytes\n", n);
-		}
-		for( i = 0 ; i < n ; ++i ) if( buffer[i] != buffer2[i] ) {
 			printf(
-					"Erro de verificacao! Conteudo recebido apos escrita diferente do esperado\n");
-			break;
+					"Erro de comunicacao! Esperado %d bytes, chegaram %d bytes\n",
+					n, n_aux);
 		}
-		
+		for (i = 0; i < n; ++i)
+			if (buffer[i] != buffer2[i])
+			{
+				printf(
+						"Erro de verificacao! Conteudo recebido apos escrita diferente do esperado\n");
+				break;
+			}
+
 		if (receberComando(COM_portNumber) != CMD_SERIAL_ACK)
 		{
 			printf(
 					"Erro de comunicacao! Ack nao recebido CMD_SERIAL_START_READ\n");
 		}
 
-
-		printf("%d%%\r", (int)((((double)count)/file_size) * 100));
+		printf("%d%%\n", (int) ((((double) count) / file_size) * 100));
 		count += n;
 
 	}
-	
+
 	printf("100%%");
 	printf("\n%d bytes verificados.\n", count);
-	
+
 	fclose(fin);
 
 	return 0;
