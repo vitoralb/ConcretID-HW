@@ -30,22 +30,24 @@ uart0_init()
   PERCFG |= PERCFG_U0CFG;  / *alternative port 2 = P1.5-2 */
 #ifdef UART0_RTSCTS
   P1SEL |= 0x3C;    /* peripheral select for TX and RX, RTS, CTS */
+  P1DIR |= 0x08;    /* RTS out */
+  P1DIR &= ~0x04;   /* CTS in */
 #else
   P1SEL |= 0x30;    /* peripheral select for TX and RX */
-  P1 &= ~0x08;      /* RTS down */
+  P1DIR |= 0x20;    /* TX out */
+  P1DIR &= ~0x10;   /* RX in */
 #endif
-  P1DIR |= 0x28;    /* RTS, TX out */
-  P1DIR &= ~0x14;   /* CTS & RX in */
 #else
   PERCFG &= ~PERCFG_U0CFG; /* alternative port 1 = P0.5-2 */
 #ifdef UART0_RTSCTS
-  P0SEL |= 0x20 | 0x10;    /* peripheral select for TX and RX */
+  P0SEL |= 0x3C;    /* peripheral select for TX and RX, RTS, CTS */
+  P0DIR |= 0x20;    /* RTS out */
+  P0DIR &= ~0x10;   /* CTS in */
 #else
   P0SEL |= 0x0C;    /* peripheral select for TX and RX */
-  P0 &= ~0x20;    /* RTS down */
+  P0DIR |= 0x08;    /* TX out */
+  P0DIR &= ~0x04;   /* RX in */
 #endif
-  P0DIR |= 0x28;    /* RTS, TX out */
-  P0DIR &= ~0x14;   /* CTS, RX in */
 #endif
 
 

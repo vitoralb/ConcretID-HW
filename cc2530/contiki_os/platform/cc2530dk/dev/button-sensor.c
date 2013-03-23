@@ -35,6 +35,7 @@
 #include "dev/port.h"
 #include "dev/button-sensor.h"
 #include "dev/watchdog.h"
+#include "debug.h"
 /*---------------------------------------------------------------------------*/
 static CC_AT_DATA struct timer debouncetimer;
 /*---------------------------------------------------------------------------*/

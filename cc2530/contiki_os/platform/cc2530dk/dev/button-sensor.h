@@ -61,7 +61,7 @@
 #define BUTTON2_PIN  3
 #else
 #define BUTTON1_PORT 0
-#define BUTTON1_PIN  1
+#define BUTTON1_PIN  0
 #endif
 
 #ifdef BUTTON_SENSOR_CONF_ON
@@ -84,7 +84,7 @@ void port_1_isr(void) __interrupt(P1INT_VECTOR);
 
 #else /* MODEL_CC2531 */
 /* SmartRF */
-/* Button 1: P0_1 - Port 0 ISR needed */
+/* Button 1: P0_0 - Port 0 ISR needed */
 void port_0_isr(void) __interrupt(P0INT_VECTOR);
 #define   BUTTON_SENSOR_ACTIVATE() button_sensor.configure(SENSORS_ACTIVE, 1)
 #endif /* MODEL_CC2531 */
