@@ -204,6 +204,7 @@ ifeq ($(HAVE_BANKING),1)
 	done 
 	$(SREC_CAT) $(SREC_FLAGS) $(@:.hex=.banked-hex) -intel -crop 0x00000 0x07FFF -o home.ihx -intel
 	srec_cat home.ihx -intel $(foreach file,$(FILES),$(file) -intel) -o $@ -intel
+	$(SREC_CAT) $(SREC_FLAGS) $@ -intel -o $(@:.hex=.bin) -binary
 	rm -f home.ihx $(FILES)
 else
 ### Build non-banked firmware
@@ -212,4 +213,10 @@ else
 
 %.hex: %.ihx
 	$(PACKIHX) $< > $@
+	@echo "\nGenerate bin file"
+	$(SREC_CAT) $(SREC_FLAGS) $< -intel -o $(@:.hex=.bin) -binary
+		
 endif
+
+
+

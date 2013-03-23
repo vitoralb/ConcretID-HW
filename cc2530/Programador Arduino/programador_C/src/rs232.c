@@ -40,7 +40,6 @@
 int Cport[30], error;
 
 struct termios new_port_settings, old_port_settings[30];
-
 char comports[30][16] =
 { "/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3", "/dev/ttyS4",
 		"/dev/ttyS5", "/dev/ttyS6", "/dev/ttyS7", "/dev/ttyS8", "/dev/ttyS9",
@@ -49,7 +48,6 @@ char comports[30][16] =
 		"/dev/ttyUSB2", "/dev/ttyUSB3", "/dev/ttyUSB4", "/dev/ttyUSB5",
 		"/dev/ttyAMA0", "/dev/ttyAMA1", "/dev/ttyACM0", "/dev/ttyACM1",
 		"/dev/rfcomm0", "/dev/rfcomm1", "/dev/ircomm0", "/dev/ircomm1" };
-
 int RS232_OpenComport(int comport_number, int baudrate)
 {
 	int baudr, status;
@@ -202,8 +200,6 @@ int RS232_PollComport(int comport_number, unsigned char *buf, int size)
 
 	return (n);
 }
-
-
 
 int RS232_SendByte(int comport_number, unsigned char byte)
 {
@@ -557,7 +553,7 @@ unsigned char RS232_ReadByte(int comport_number)
 }
 void RS232_ReadBuffer(int comport_number, unsigned char *buf, int size)
 {
-	int i = 0, n = 0;
+	int n = 0;
 	while (size > 0)
 	{
 		while ((n = RS232_PollComport(comport_number, buf, size)) == 0)

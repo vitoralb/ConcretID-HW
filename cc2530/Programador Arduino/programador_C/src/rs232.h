@@ -56,11 +56,13 @@ extern "C" {
 #include <sys/stat.h>
 #include <limits.h>
 
+
 #else
 
 #include <windows.h>
 
 #endif
+
 
 int RS232_OpenComport(int, int);
 int RS232_PollComport(int, unsigned char *, int);
