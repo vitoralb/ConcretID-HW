@@ -51,7 +51,7 @@
 #undef LEDS_GREEN
 #undef LEDS_YELLOW
 #undef LEDS_RED
-#define LEDS_YELLOW 4
+#define LEDS_YELLOW 3
 
 /*
  * Smart RF LEDs
@@ -99,15 +99,14 @@
 #define LEDS_RED      2
 
 /* H/W Connections */
-#define LED1_PIN   P1_0
-#define LED2_PIN   P1_1
-#define LED3_PIN   P1_4
+#define LED1_PIN   P0_0
+#define LED2_PIN   P0_5
+#define LED3_PIN   P0_6
 
 /* P0DIR and P0SEL masks */
 #define LED1_MASK  0x01
-#define LED2_MASK  0x02
-#define LED3_MASK  0x10
-#define LED4_MASK  0x02
+#define LED2_MASK  0x20
+#define LED3_MASK  0x40
 #endif
 /*---------------------------------------------------------------------------*/
 /* Buttons */

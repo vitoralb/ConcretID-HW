@@ -91,7 +91,18 @@
 #define CRC_BIT_MASK 0x80
 #define LQI_BIT_MASK 0x7F
 /* RSSI Offset */
-#define RSSI_OFFSET    73
+#define RSSI_OFFSET_DEFAULT                       73
+#define RSSI_OFFSET_LNA_HIGHGAIN                  79
+#define RSSI_OFFSET_LNA_LOWGAIN                   67
+#if CC2530_RF_HAS_CC2591
+#if CC2530_RF_USE_HGM
+#define RSSI_OFFSET RSSI_OFFSET_LNA_HIGHGAIN
+#else
+#define RSSI_OFFSET RSSI_OFFSET_LNA_LOWGAIN
+#endif
+#else
+#define RSSI_OFFSET    RSSI_OFFSET_DEFAULT
+#endif
 
 /* 192 ms, radio off -> on interval */
 #define ONOFF_TIME                    RTIMER_ARCH_SECOND / 3125
@@ -193,16 +204,18 @@ init(void)
   AGCCTRL1 = 0x15;  /* AGC target value */
   FSCAL1 = 0x00;    /* Reduce the VCO leakage */
 
-  //TODO Arrumar isso aqui
-  AGCCTRL1  = 0x15;
-  FSCAL1 = 0x0;
+#if CC2530_RF_HAS_CC2591
   RFC_OBS_CTRL0 = 0x68;
   RFC_OBS_CTRL1 = 0x6A;
   OBSSEL1 = 0xFB;
   OBSSEL4 = 0xFC;
   P0DIR |= 0x80;
-
+#if CC2530_RF_USE_HGM
   P0_7 = 1; for (i=0; i<16; i++);
+#else
+  P0_7 = 0; for (i=0; i<16; i++);
+#endif
+#endif
 
   /* Auto ACKs and CRC calculation, default RX and TX modes with FIFOs */
   FRMCTRL0 = FRMCTRL0_AUTOCRC;

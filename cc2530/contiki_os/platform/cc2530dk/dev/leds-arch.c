@@ -50,8 +50,8 @@ leds_arch_init(void)
   P0SEL &= ~LED2_MASK;
   P0DIR |= LED2_MASK;
 #else
-  P1SEL &= ~(LED1_MASK | LED2_MASK | LED3_MASK);
-  P1DIR |= (LED1_MASK | LED2_MASK | LED3_MASK);
+  P0SEL &= ~(LED1_MASK | LED2_MASK | LED3_MASK);
+  P0DIR |= (LED1_MASK | LED2_MASK | LED3_MASK);
 #endif
 }
 /*---------------------------------------------------------------------------*/

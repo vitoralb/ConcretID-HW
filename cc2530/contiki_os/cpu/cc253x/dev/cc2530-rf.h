@@ -45,6 +45,22 @@
 /*---------------------------------------------------------------------------
  * RF Config
  *---------------------------------------------------------------------------*/
+#ifndef CC2530_RF_CONF_HAS_CC2591 /* Use CC2591 PA front-end */
+#define CC2530_RF_HAS_CC2591 0
+#else
+#define CC2530_RF_HAS_CC2591 CC2530_RF_CONF_HAS_CC2591
+#endif
+
+#ifndef CC2530_RF_CONF_USE_HGM /*Use HGM with CC2591 */
+#define CC2530_RF_USE_HGM 0
+#else
+#if CC2530_RF_HAS_CC2591
+#define CC2530_RF_USE_HGM CC2530_RF_CONF_USE_HGM
+#else
+#define CC2530_RF_USE_HGM 0
+#endif
+#endif
+
 #define CC2530_RF_TX_POWER_RECOMMENDED 0xD5
 #ifdef CC2530_RF_CONF_TX_POWER
 #define CC2530_RF_TX_POWER CC2530_RF_CONF_TX_POWER
@@ -55,8 +71,16 @@
 #ifdef CC2530_RF_CONF_CCA_THRES
 #define CC2530_RF_CCA_THRES CC2530_RF_CONF_CCA_THRES
 #else
-#define CC2530_RF_CCA_THRES CCA_THR_HGM /* User guide recommendation */
+#if CC2530_RF_HAS_CC2591
+#if CC2530_RF_USE_HGM
+#define CC2530_RF_CCA_THRES CCA_THR_HGM
+#else
+#define CC2530_RF_CCA_THRES CCA_THRES_ALONE
+#endif
+#else
+#define CC2530_RF_CCA_THRES CCA_THRES_USER_GUIDE /* User guide recommendation */
 #endif /* CC2530_RF_CONF_CCA_THRES */
+#endif
 
 #ifdef CC2530_RF_CONF_CHANNEL
 #define CC2530_RF_CHANNEL CC2530_RF_CONF_CHANNEL
