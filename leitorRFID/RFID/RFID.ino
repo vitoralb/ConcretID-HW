@@ -1,12 +1,11 @@
-#define PRESET_VALUE 0xFFFF
-#define POLYNOMIAL  0x8408
+/* 
+    RFIDReaderAPI.h
+    Autor: Felipe Salgueiro
+    19/03/2013
+    
+*/
 
-
-int i = 0;
-
-extern const unsigned char getReaderInfo[];
-extern const unsigned char inventory[];
-extern const unsigned char buzzer[];
+#include "RFIDReaderAPI.h"
 
 void setup()  
 {
@@ -25,29 +24,41 @@ void setup()
     ; // wait for serial port to connect. Needed for Leonardo only
   }
 
-
+ 
   Serial.println("Pedindo informacoes do leitor...");
     Serial1.write(getReaderInfo, 3);
     enviarChecksum(getReaderInfo, 3, &Serial1);
     print_serial();
   
-  /* Serial.println("Desligando o buzzer do leitor..."); //Não funciona =/, só serve pra se quiser apitar o buzzer interno (alterando os parametros).
+  /*
+  Serial.println("Desligando o buzzer do leitor..."); //Não funciona =/, só serve pra se quiser apitar o buzzer interno (alterando os parametros).
    Serial1.write(buzzer, 6);
     enviarChecksum(buzzer, 6, &Serial1);
-    print_serial();  */
-  
+    print_serial();  
+  */
 }
 
 void loop(){
+  
+  /*
     Serial.println("Pedindo inventorio do leitor...");
     Serial1.write(inventory, 3);
     enviarChecksum(inventory, 3, &Serial1);
-
-    print_serial();  
-
-  delay (200);  
+    print_serial();
+    
+    */
+    
+    Serial.println("Antes struct");
+    ResponseInventoryCMD respInventory;
+    Serial.println("Antes func");
+    inventory_EPCC1G2CMD (&Serial1, &respInventory);
+    printfResponseInventoryCMD (&respInventory);
+    
+    
+    delay (500);  
   
  
 }
+
 
 
