@@ -1,6 +1,6 @@
 /* 
     RFIDReaderAPI.h
-    Autor: Felipe Salgueiro
+    Autor: Felipe Salgueiro Oliveira e Silva
     19/03/2013
     
 */
@@ -48,14 +48,18 @@ void loop(){
     
     */
     
-    Serial.println("Antes struct");
     ResponseInventoryCMD respInventory;
-    Serial.println("Antes func");
     inventory_EPCC1G2CMD (&Serial1, &respInventory);
     printfResponseInventoryCMD (&respInventory);
     
     
     delay (500);  
+    
+    ResponseSetBRateCMD respSetBRate;
+    ResponseSetAdrCMD respSetAdr;
+    printfResponseSetAdrCMD (&respSetAdr);
+    
+    delay (500); 
   
  
 }
