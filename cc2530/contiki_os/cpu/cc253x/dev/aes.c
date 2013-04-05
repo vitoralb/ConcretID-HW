@@ -10,9 +10,6 @@
  */
 
 #include "dev/aes.h"
-#include "8051def.h"
-#include "cc253x.h"
-#include <stdio.h>
 
 const char base64_to_char[] =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

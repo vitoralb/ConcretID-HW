@@ -42,6 +42,10 @@
 #ifndef __AES_H__
 #define __AES_H__
 
+#include <stdio.h>
+#include "8051def.h"
+#include "cc253x.h"
+
 #define AES_KEY_SIZE 16
 #define AES_BLOCK_SIZE 16
 
@@ -103,7 +107,8 @@ void aes_init(char * new_key);
 uint16_t aes_encrypt(uint8_t * output, const uint8_t * data, uint16_t size);
 /**
  * \param output 	Can be the same as data.
- * \retval			The size of the data decrypted in output
+ * \retval			The size of the data decrypted in output,
+ * 						or -1 if there is a MAC and the key is wrong
  *
  */
 uint16_t aes_decrypt(uint8_t * output, const uint8_t * data, uint16_t size);
