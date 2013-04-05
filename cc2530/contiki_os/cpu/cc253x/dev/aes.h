@@ -32,7 +32,8 @@
 /**
  * \file
  *         Header file for the cc2530 AES encrypton
- *         based on the document DN108, using CBC (optimal MAC)
+ *         based on the document DN108, using CBC as default (optimal MAC)
+ *         Without DMA support
  *
  * \author
  *         Luiz Afonso
@@ -83,13 +84,29 @@
 #endif
 #endif
 
+void aes_set_key_base64(const char * new_key);
 
-#define CHAR_TO_BASE64(x) \
-	('A' <= x && x <= 'Z' ? x-'A' : \
-	 'a' <= x && x <= 'z' ? x-('a'-26) : \
-	 '0' <= x && x <= '9' ? x-('0'-52) : \
-	 x == '+' || x == ' ' ? 62 : 63 )
+void aes_set_key(const uint8_t * key);
 
+/**
+ * \param new_key 	As a string in base64, if null, it will be used a default_key
+ *
+ */
+void aes_init(char * new_key);
+
+/**
+ * \param output 	Can be the same as data. Make sure there is enough
+ * 						space in it: size+47 in the worst case
+ * \retval			The size of the data encrypted in output
+ *
+ */
+uint16_t aes_encrypt(uint8_t * output, const uint8_t * data, uint16_t size);
+/**
+ * \param output 	Can be the same as data.
+ * \retval			The size of the data decrypted in output
+ *
+ */
+uint16_t aes_decrypt(uint8_t * output, const uint8_t * data, uint16_t size);
 
 #endif /* __AES_H__ */
 

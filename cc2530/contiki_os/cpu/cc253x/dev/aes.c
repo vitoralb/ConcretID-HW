@@ -1,6 +1,8 @@
 /**
  * \file
- *         cc2530 AES encrypton, based on the document DN108, using CBC (optimal MAC)
+ *         cc2530 AES encrypton, based on the document DN108,
+ *         using CBC as default (optimal MAC)
+ *         Without DMA support
  *
  * \author
  *         Luiz Afonso
@@ -12,8 +14,14 @@
 #include "cc253x.h"
 #include <stdio.h>
 
-const char base64[] =
+const char base64_to_char[] =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+#define CHAR_TO_BASE64(x) \
+	('A' <= x && x <= 'Z' ? x-'A' : \
+	 'a' <= x && x <= 'z' ? x-('a'-26) : \
+	 '0' <= x && x <= '9' ? x-('0'-52) : \
+	 x == '+' || x == ' ' ? 62 : 63 )
 
 static uint8_t current_key[AES_KEY_SIZE] =
 	{0xC0,0x4F,0x41,0x45,0xF4,0x27,0x77,0x4B,0xE9,0x7D,0xB6,0xE0,0xAC,0x31,0xD8,0x35};
@@ -153,7 +161,7 @@ uint16_t aes_decrypt(uint8_t * output, const uint8_t * data, uint16_t size) {
 		while( !(ENCCS & AES_READY) );
 
 		for( i = 0 ; i < AES_BLOCK_SIZE ; ++i )
-			if( cipher[i] != mac[i] ) return -1; // or should be -1?
+			if( cipher[i] != mac[i] ) return -1;
 	}
 #endif
 
