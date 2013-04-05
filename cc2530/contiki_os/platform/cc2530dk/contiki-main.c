@@ -24,6 +24,7 @@
 #include "sfr-bits.h"
 #include "contiki-lib.h"
 #include "contiki-net.h"
+#include "dev/aes.h"
 /*---------------------------------------------------------------------------*/
 #if VIZTOOL_CONF_ON
 PROCESS_NAME(viztool_process);
