@@ -43,18 +43,26 @@
 #define __AES_H__
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "8051def.h"
 #include "cc253x.h"
 
 #define AES_KEY_SIZE 16
 #define AES_BLOCK_SIZE 16
 
+/*
+ * Caution: According to a sample code of TI (swrc135b - CC2530-Software Examples),
+ * "Counter, Output Feedback and Cipher Feedback operates on 4 bytes and not 16 bytes."
+ * aes_encrypt and aes_decrypt don't consider this
+ */
+
 #define AES_CBC_MODE (0<<4)
 #define AES_CFB_MODE (1<<4)
 #define AES_OFB_MODE (2<<4)
 #define AES_CTR_MODE (3<<4)
 #define AES_ECB_MODE (4<<4) /* Not recommended */
-#define AES_CBC_MAC_MODE (5<<4) /* Not recommended, does it just create a MAC? */
+#define AES_CBCMAC_MODE (5<<4) /* Don`t use */
 
 #define AES_READY (1<<3)
 
@@ -69,7 +77,7 @@
 #ifdef AES_CONF_ALWAYS_SET_KEY
 #define  AES_ALWAYS_SET_KEY AES_CONF_ALWAYS_SET_KEY
 #else
-#define  AES_ALWAYS_SET_KEY 1
+#define  AES_ALWAYS_SET_KEY 0
 #endif
 
 #ifdef AES_CONF_DEFAULT_MODE
@@ -78,37 +86,31 @@
 #define AES_DEFAULT_MODE AES_CBC_MODE
 #endif
 
-#if AES_DEFAULT_MODE == AES_CBC_MODE || \
-	AES_DEFAULT_MODE == AES_CFB_MODE || \
-	AES_DEFAULT_MODE == AES_ECB_MODE
 #ifdef AES_CONF_USE_MAC
 #define AES_USE_MAC AES_CONF_USE_MAC
 #else
 #define AES_USE_MAC 1
 #endif
-#endif
 
-void aes_set_key_base64(const char * new_key);
-
+/**
+ * \param new_key 	If null, it will be used a default_key
+ *
+ */
 void aes_set_key(const uint8_t * key);
 
 /**
- * \param new_key 	As a string in base64, if null, it will be used a default_key
- *
- */
-void aes_init(char * new_key);
-
-/**
  * \param output 	Can be the same as data. Make sure there is enough
- * 						space in it: size+47 in the worst case
+ * 						space in it: size+47 in the worst case, more precisely:
+ * 						ceil(size/AES_BLOCK_SIZE + AES_USE_MAC)*AES_BLOCK_SIZE
  * \retval			The size of the data encrypted in output
  *
  */
 uint16_t aes_encrypt(uint8_t * output, const uint8_t * data, uint16_t size);
+
 /**
  * \param output 	Can be the same as data.
  * \retval			The size of the data decrypted in output,
- * 						or -1 if there is a MAC and the key is wrong
+ * 						or -1 (0xffff) if there is a MAC and the key is wrong
  *
  */
 uint16_t aes_decrypt(uint8_t * output, const uint8_t * data, uint16_t size);
