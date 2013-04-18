@@ -48,6 +48,10 @@
 #define printfResponseSetAdrCMD printfResponseSimpleCMD
 #define printfResponseSetBRateCMD printfResponseSimpleCMD
 #define printfResponseSetPowerCMD printfResponseSimpleCMD
+#define printfResponseSetScanTimeCMD printfResponseSimpleCMD
+#define printfResponseRstRProtectCMD printfResponseSimpleCMD
+#define printfResponseRdProtectWEPCCMD printfResponseSimpleCMD 
+
 
 const byte getReaderInfo[] = {0x04, 0x00, 0x21};
 const byte inventory[] = {0x04, 0x00, 0x01};
@@ -55,6 +59,10 @@ const byte setAdr[] = {0x05,0x00,0x24};
 const byte setBRate[] = {0x05,0x00,0x28};
 const byte setPower[] = {0x05,0x00,0x2F};
 const byte getWorkMode[] = {0x04, 0x00, 0x36};
+const byte setScanTime[] = {0x05,0x00,0x25};
+const byte resetReadProtect[] = {0x08,0x00,0x0A};
+const byte checkReadProtect[] = {0x04,0x00,0x0B};
+const byte readProtectWEPC[] = {0x00,0x08}; // Len � vari�vel
 
 byte bufferCmd [262];
 
@@ -106,7 +114,7 @@ typedef struct retornoSimplesCmd {
   byte status_;
   byte LSB_CRC16;
   byte MSB_CRC16;  
-} ResponseSetAdrCMD, ResponseSetBRateCMD, ResponseSetPowerCMD;
+} ResponseSetAdrCMD, ResponseSetBRateCMD, ResponseSetPowerCMD, ResponseSetScanTimeCMD, ResponseRstRProtectCMD, ResponseRdProtectWEPC;
 
 typedef struct retornoWorkModeCmd {
   byte flagCRC;
@@ -134,6 +142,19 @@ typedef struct retornoWorkModeCmd {
   byte MSB_CRC16;  
 } ResponseWorkModeCMD;
 
+typedef struct retornoCheckRdProtectCmd {
+  byte flagCRC;
+  byte flagTimeout;
+  byte len;
+  byte adr;
+  byte reCmd;
+  byte status_;
+  byte readPro;
+  byte LSB_CRC16;
+  byte MSB_CRC16;  
+} ResponseCheckRdProtectCMD;
+
+ 
 unsigned int uiCrc16Cal(unsigned char const  * pucY, unsigned char ucX)
 {
 	unsigned char ucI,ucJ;
@@ -882,4 +903,300 @@ void printfResponseGetWorkModeCMD (ResponseWorkModeCMD * resposta){
   
 }
 
+void setScanTime_ReadDefCMD (HardwareSerial * porta, ResponseSetScanTimeCMD * resposta, int scantime_x100ms)
+{  
+    int i = 0;
+    byte paramScanTime;
+    Serial.println("Setando o ScanTime do leitor...");
+    Serial.println ("");
+	
+	if (scantime_x100ms >= 3 && scantime_x100ms <= 255)
+	{
+		paramScanTime = (byte) scantime_x100ms;
+	}
+	else
+	{
+		paramScanTime = 0x0A;
+		Serial.println("ScanTime fora do range. O valor default (1 segundo) sera setado. ");
+		Serial.println ("");
+	}
+	
+    (*porta).write(setScanTime, 3);
+	(*porta).write(paramScanTime);
+	
+	memcpy (bufferCmd, setScanTime, 3);
+	bufferCmd [4] = paramScanTime;
+    enviarChecksum(bufferCmd, 4, porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
+  
+}
+
+void resetRdProtect_EPCC1G2CMD (HardwareSerial * porta, ResponseSetBRateCMD * resposta, int accessPassword)
+{  
+    int i = 0;
+    byte pwd [4];
+    pwd [0] = (byte) (accessPassword & 0x000000FF);
+    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("Resetando o ReadProtect da tag...");
+    Serial.println ("");
+    (*porta).write(resetReadProtect, 3);
+	(*porta).write(pwd,4);
+	
+	memcpy (bufferCmd, resetReadProtect, 3);
+	bufferCmd [4] = pwd [0];
+	bufferCmd [5] = pwd [1];
+	bufferCmd [6] = pwd [2];
+	bufferCmd [7] = pwd [3];
+    enviarChecksum(bufferCmd, 7, porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
+  
+}
+
+void checkRdProtectCMD_EPCC1G2CMD (HardwareSerial * porta, ResponseCheckRdProtectCMD * resposta)
+{  
+    int i = 0;
+
+    Serial.println("Checando ReadProtect da TAG...");
+    Serial.println ("");
+    (*porta).write(checkReadProtect, 3);
+    enviarChecksum(checkReadProtect, 3, porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+	
+	resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->readPro = bufferCmd [4];  
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)]; 
+  
+}
+
+
+
+void printfCheckRdProtectCMD (ResponseCheckRdProtectCMD * resposta){
+  
+  Serial.print("**** Resposta do CMD ****");
+  Serial.println ("");
+  
+  Serial.print("flagTimeout: ");
+  Serial.print(resposta->flagTimeout, HEX);
+  Serial.println ("");
+  if (resposta->flagTimeout == 1)
+  {
+     Serial.print("Nao houve resposta. Timeout. ");
+     return; 
+  }
+  
+  Serial.print("flagCRC: ");
+  Serial.print(resposta->flagCRC, HEX);
+  Serial.println ("");
+  if (resposta->flagCRC == 1)
+  {  
+     Serial.print("Resposta do comando corrompida. CRC nao eh valido. ");
+     return; 
+  }
+  
+  Serial.print("len: ");
+  Serial.print(resposta->len, HEX);
+  Serial.println("");
+  Serial.print("adr: ");
+  Serial.print(resposta->adr, HEX);
+  Serial.println("");
+  Serial.print("reCmd: ");
+  Serial.print(resposta->reCmd, HEX);
+  Serial.println("");
+  Serial.print("status: ");
+  Serial.print(resposta->status_, HEX);
+  Serial.println("");
+  Serial.print("ReadPro: ");
+  if (resposta->readPro == 0x00)
+  {
+	  Serial.println("Tag is protected");
+	  Serial.println("");
+  }
+  else if (resposta->readPro == 0x01)
+  {
+	Serial.println("Tag is unprotected");
+	Serial.println("");
+  }
+  else
+  {
+	Serial.println("Tag is unknown");
+	  Serial.println("");
+  }
+  
+  Serial.print("LSB_CRC16: ");
+  Serial.print(resposta->LSB_CRC16, HEX);
+  Serial.println("");
+  Serial.print("MSB_CRC16: ");
+  Serial.print(resposta->MSB_CRC16, HEX);
+  Serial.println("");
+  
+  Serial.println("**** FIM ****");
+  
+}
+
+
+
+
+void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * resposta, int ENum)
+{  
+    int i = 0;
+    byte pwd [4];
+    pwd [0] = (byte) (accessPassword & 0x000000FF);
+    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("Resetando o ReadProtect da tag...");
+    Serial.println ("");
+    (*porta).write(resetReadProtect, 3);
+	(*porta).write(pwd,4);
+	
+	memcpy (bufferCmd, resetReadProtect, 3);
+	bufferCmd [4] = pwd [0];
+	bufferCmd [5] = pwd [1];
+	bufferCmd [6] = pwd [2];
+	bufferCmd [7] = pwd [3];
+    enviarChecksum(bufferCmd, 7, porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
+  
+}
 #endif 
