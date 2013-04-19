@@ -51,7 +51,7 @@
 #define printfResponseSetScanTimeCMD printfResponseSimpleCMD
 #define printfResponseRstRProtectCMD printfResponseSimpleCMD
 #define printfResponseRdProtectWEPCCMD printfResponseSimpleCMD 
-
+#define printfResponseKillTagCMD printfResponseSimpleCMD 
 
 const byte getReaderInfo[] = {0x04, 0x00, 0x21};
 const byte inventory[] = {0x04, 0x00, 0x01};
@@ -62,7 +62,8 @@ const byte getWorkMode[] = {0x04, 0x00, 0x36};
 const byte setScanTime[] = {0x05,0x00,0x25};
 const byte resetReadProtect[] = {0x08,0x00,0x0A};
 const byte checkReadProtect[] = {0x04,0x00,0x0B};
-const byte readProtectWEPC[] = {0x00,0x08}; // Len � vari�vel
+const byte readProtectWEPC[] = {0x00,0x08}; // Len eh variavel
+const byte killTag[] = {0x00,0x05}; // Len eh variavel
 
 byte bufferCmd [262];
 
@@ -114,7 +115,7 @@ typedef struct retornoSimplesCmd {
   byte status_;
   byte LSB_CRC16;
   byte MSB_CRC16;  
-} ResponseSetAdrCMD, ResponseSetBRateCMD, ResponseSetPowerCMD, ResponseSetScanTimeCMD, ResponseRstRProtectCMD, ResponseRdProtectWEPC;
+} ResponseSetAdrCMD, ResponseSetBRateCMD, ResponseSetPowerCMD, ResponseSetScanTimeCMD, ResponseRstRProtectCMD, ResponseRdProtectWEPC, ResponseKillTagCMD;
 
 typedef struct retornoWorkModeCmd {
   byte flagCRC;
@@ -965,8 +966,8 @@ void setScanTime_ReadDefCMD (HardwareSerial * porta, ResponseSetScanTimeCMD * re
   
 }
 
-void resetRdProtect_EPCC1G2CMD (HardwareSerial * porta, ResponseSetBRateCMD * resposta, int accessPassword)
-{  
+void resetRdProtect_EPCC1G2CMD (HardwareSerial * porta, ResponseRstRProtectCMD * resposta, int accessPassword)
+{  	
     int i = 0;
     byte pwd [4];
     pwd [0] = (byte) (accessPassword & 0x000000FF);
@@ -1140,9 +1141,11 @@ void printfCheckRdProtectCMD (ResponseCheckRdProtectCMD * resposta){
 
 
 
-void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * resposta, int ENum)
-{  
+void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
+{  	
+	byte comandSize = 11 + ENum;
     int i = 0;
+	int j = 0;
     byte pwd [4];
     pwd [0] = (byte) (accessPassword & 0x000000FF);
     pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
@@ -1151,17 +1154,39 @@ void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * r
 
 	
 	
-    Serial.println("Resetando o ReadProtect da tag...");
+    Serial.println("ReadProtect da tag usando o EPC...");
     Serial.println ("");
-    (*porta).write(resetReadProtect, 3);
-	(*porta).write(pwd,4);
+	(*porta).write(comandSize);
+	bufferCmd [0] = comandSize;
 	
-	memcpy (bufferCmd, resetReadProtect, 3);
-	bufferCmd [4] = pwd [0];
-	bufferCmd [5] = pwd [1];
-	bufferCmd [6] = pwd [2];
-	bufferCmd [7] = pwd [3];
-    enviarChecksum(bufferCmd, 7, porta);
+    (*porta).write(readProtectWEPC, 2);
+	memcpy (bufferCmd + 1, readProtectWEPC, 2);
+	(*porta).write(ENum);
+	bufferCmd [3] = comandSize;
+	
+	if (ENum >= 15)
+	{
+		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
+		return; 
+	}
+	
+	for (j = 0; j < ENum; j++)
+	{
+		(*porta).write(EPC[j]);
+		bufferCmd [4 + j] = EPC[j];
+	}
+	
+	(*porta).write(pwd,4);
+	(*porta).write(MaskAdr);
+	(*porta).write(MaskLen);
+	bufferCmd [j] = pwd [0];
+	bufferCmd [j + 1] = pwd [1];
+	bufferCmd [j + 2] = pwd [2];
+	bufferCmd [j + 3] = pwd [3];
+	bufferCmd [j + 4] = pwd [MaskAdr];
+	bufferCmd [j + 5] = pwd [MaskLen];
+	
+    enviarChecksum(bufferCmd, (j + 6), porta);
     
     while(!(*porta).available());
     while((*porta).available()){
@@ -1199,4 +1224,89 @@ void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * r
     resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
   
 }
+
+void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
+{  	
+	byte comandSize = 11 + ENum;
+    int i = 0;
+	int j = 0;
+    byte Killpwd [4];
+    Killpwd [0] = (byte) (accessPassword & 0x000000FF);
+    Killpwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    Killpwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    Killpwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("ReadProtect da tag usando o EPC...");
+    Serial.println ("");
+	(*porta).write(comandSize);
+	bufferCmd [0] = comandSize;
+	
+    (*porta).write(killTag, 2);
+	memcpy (bufferCmd + 1, killTag, 2);
+	(*porta).write(ENum);
+	bufferCmd [3] = comandSize;
+	
+	if (ENum >= 15)
+	{
+		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
+		return; 
+	}
+	
+	for (j = 0; j < ENum; j++)
+	{
+		(*porta).write(EPC[j]);
+		bufferCmd [4 + j] = EPC[j];
+	}
+	
+	(*porta).write(Killpwd,4);
+	(*porta).write(MaskAdr);
+	(*porta).write(MaskLen);
+	bufferCmd [j] = Killpwd [0];
+	bufferCmd [j + 1] = Killpwd [1];
+	bufferCmd [j + 2] = Killpwd [2];
+	bufferCmd [j + 3] = Killpwd [3];
+	bufferCmd [j + 4] = Killpwd [MaskAdr];
+	bufferCmd [j + 5] = Killpwd [MaskLen];
+	
+    enviarChecksum(bufferCmd, (j + 6), porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
+  
+}
+
 #endif 
