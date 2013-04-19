@@ -70,6 +70,8 @@ const byte checkReadProtect[] = {0x04,0x00,0x0B};
 const byte readProtectWEPC[] = {0x00,0x08}; // Len eh variavel
 const byte killTag[] = {0x00,0x05}; // Len eh variavel
 const byte writeData[] = {0x00,0x03}; // Len eh variavel
+const byte readData[] = {0x00,0x02}; // Len eh variavel
+
 
 byte bufferCmd [262];
 
@@ -162,6 +164,19 @@ typedef struct retornoCheckRdProtectCmd {
 } ResponseCheckRdProtectCMD;
 
  
+typedef struct retornoReadDataCmd {
+  byte flagCRC;
+  byte flagTimeout;
+  byte len;
+  byte adr;
+  byte reCmd;
+  byte status_;
+  byte qtdData;
+  byte data [240];
+  byte LSB_CRC16;
+  byte MSB_CRC16;  
+} ResponseReadDataCMD; 
+
 unsigned int uiCrc16Cal(unsigned char const  * pucY, unsigned char ucX)
 {
 	unsigned char ucI,ucJ;
@@ -244,6 +259,7 @@ void exit(int i)
 
 /*************************************************************************************/
 /****  Comandos   EPCC1G2 ****/
+
 
 void inventory_EPCC1G2CMD (HardwareSerial * porta, ResponseInventoryCMD * resposta)
 {  
@@ -403,8 +419,677 @@ void printfResponseInventoryCMD (ResponseInventoryCMD * resposta){
 }
 
 
-/*************************************************************************************/
-/****  Comandos   EPCC1G2 ****/
+void printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta){
+  
+  Serial.print("**** Resposta do CMD ****");
+  Serial.println ("");
+  
+  Serial.print("flagTimeout: ");
+  Serial.print(resposta->flagTimeout, HEX);
+  Serial.println ("");
+  if (resposta->flagTimeout == 1)
+  {
+     Serial.print("Nao houve resposta. Timeout. ");
+     Serial.println ("");
+     return; 
+  }
+  
+  Serial.print("flagCRC: ");
+  Serial.print(resposta->flagCRC, HEX);
+  Serial.println ("");
+  if (resposta->flagCRC == 1)
+  {  
+     Serial.print("Resposta do comando corrompida. CRC nao eh valido. ");
+     Serial.println ("");
+     return; 
+  }
+  
+  Serial.print("len: ");
+  Serial.print(resposta->len, HEX);
+  Serial.println("");
+  Serial.print("adr: ");
+  Serial.print(resposta->adr, HEX);
+  Serial.println("");
+  Serial.print("reCmd: ");
+  Serial.print(resposta->reCmd, HEX);
+  Serial.println("");
+  Serial.print("status: ");
+  Serial.print(resposta->status_, HEX);
+  Serial.println("");
+  Serial.print("LSB_CRC16: ");
+  Serial.print(resposta->LSB_CRC16, HEX);
+  Serial.println("");
+  Serial.print("MSB_CRC16: ");
+  Serial.print(resposta->MSB_CRC16, HEX);
+  Serial.println("");
+  
+  Serial.println("**** FIM ****");
+  
+}
+
+void resetRdProtect_EPCC1G2CMD (HardwareSerial * porta, ResponseRstRProtectCMD * resposta, int accessPassword)
+{  	
+    int i = 0;
+    byte pwd [4];
+    pwd [0] = (byte) (accessPassword & 0x000000FF);
+    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("Resetando o ReadProtect da tag...");
+    Serial.println ("");
+    (*porta).write(resetReadProtect, 3);
+	(*porta).write(pwd,4);
+	
+	memcpy (bufferCmd, resetReadProtect, 3);
+	bufferCmd [4] = pwd [0];
+	bufferCmd [5] = pwd [1];
+	bufferCmd [6] = pwd [2];
+	bufferCmd [7] = pwd [3];
+    enviarChecksum(bufferCmd, 7, porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
+  
+}
+
+void checkRdProtectCMD_EPCC1G2CMD (HardwareSerial * porta, ResponseCheckRdProtectCMD * resposta)
+{  
+    int i = 0;
+
+    Serial.println("Checando ReadProtect da TAG...");
+    Serial.println ("");
+    (*porta).write(checkReadProtect, 3);
+    enviarChecksum(checkReadProtect, 3, porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+	
+	resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->readPro = bufferCmd [4];  
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)]; 
+  
+}
+
+
+
+void printfCheckRdProtectCMD (ResponseCheckRdProtectCMD * resposta){
+  
+  Serial.print("**** Resposta do CMD ****");
+  Serial.println ("");
+  
+  Serial.print("flagTimeout: ");
+  Serial.print(resposta->flagTimeout, HEX);
+  Serial.println ("");
+  if (resposta->flagTimeout == 1)
+  {
+     Serial.print("Nao houve resposta. Timeout. ");
+     return; 
+  }
+  
+  Serial.print("flagCRC: ");
+  Serial.print(resposta->flagCRC, HEX);
+  Serial.println ("");
+  if (resposta->flagCRC == 1)
+  {  
+     Serial.print("Resposta do comando corrompida. CRC nao eh valido. ");
+     return; 
+  }
+  
+  Serial.print("len: ");
+  Serial.print(resposta->len, HEX);
+  Serial.println("");
+  Serial.print("adr: ");
+  Serial.print(resposta->adr, HEX);
+  Serial.println("");
+  Serial.print("reCmd: ");
+  Serial.print(resposta->reCmd, HEX);
+  Serial.println("");
+  Serial.print("status: ");
+  Serial.print(resposta->status_, HEX);
+  Serial.println("");
+  Serial.print("ReadPro: ");
+  if (resposta->readPro == 0x00)
+  {
+	  Serial.println("Tag is protected");
+	  Serial.println("");
+  }
+  else if (resposta->readPro == 0x01)
+  {
+	Serial.println("Tag is unprotected");
+	Serial.println("");
+  }
+  else
+  {
+	Serial.println("Tag is unknown");
+	  Serial.println("");
+  }
+  
+  Serial.print("LSB_CRC16: ");
+  Serial.print(resposta->LSB_CRC16, HEX);
+  Serial.println("");
+  Serial.print("MSB_CRC16: ");
+  Serial.print(resposta->MSB_CRC16, HEX);
+  Serial.println("");
+  
+  Serial.println("**** FIM ****");
+  
+}
+
+
+
+
+void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
+{  	
+	byte comandSize = 11 + ENum;
+    int i = 0;
+	int j = 0;
+    byte pwd [4];
+    pwd [0] = (byte) (accessPassword & 0x000000FF);
+    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("ReadProtect da tag usando o EPC...");
+    Serial.println ("");
+	(*porta).write(comandSize);
+	bufferCmd [0] = comandSize;
+	
+    (*porta).write(readProtectWEPC, 2);
+	memcpy (bufferCmd + 1, readProtectWEPC, 2);
+	(*porta).write(ENum);
+	bufferCmd [3] = ENum;
+	
+	if (ENum >= 15)
+	{
+		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
+		return; 
+	}
+	
+	for (j = 0; j < ENum; j++)
+	{
+		(*porta).write(EPC[j]);
+		bufferCmd [4 + j] = EPC[j];
+	}
+	j += 4;
+	
+	(*porta).write(pwd,4);
+	(*porta).write(MaskAdr);
+	(*porta).write(MaskLen);
+	bufferCmd [j] = pwd [0];
+	bufferCmd [j + 1] = pwd [1];
+	bufferCmd [j + 2] = pwd [2];
+	bufferCmd [j + 3] = pwd [3];
+	bufferCmd [j + 4] = MaskAdr;
+	bufferCmd [j + 5] = MaskLen;
+	
+    enviarChecksum(bufferCmd, (j + 6), porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)]; 
+  
+}
+
+void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
+{  	
+	byte comandSize = 11 + ENum;
+    int i = 0;
+	int j = 0;
+    byte Killpwd [4];
+    Killpwd [0] = (byte) (accessPassword & 0x000000FF);
+    Killpwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    Killpwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    Killpwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("ReadProtect da tag usando o EPC...");
+    Serial.println ("");
+	(*porta).write(comandSize);
+	bufferCmd [0] = comandSize;
+	
+    (*porta).write(killTag, 2);
+	memcpy (bufferCmd + 1, killTag, 2);
+	(*porta).write(ENum);
+	bufferCmd [3] = ENum;
+	
+	if (ENum >= 15)
+	{
+		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
+		return; 
+	}
+	
+	for (j = 0; j < ENum; j++)
+	{
+		(*porta).write(EPC[j]);
+		bufferCmd [4 + j] = EPC[j];
+	}
+	j += 4;
+	
+	(*porta).write(Killpwd,4);
+	(*porta).write(MaskAdr);
+	(*porta).write(MaskLen);
+	bufferCmd [j] = Killpwd [0];
+	bufferCmd [j + 1] = Killpwd [1];
+	bufferCmd [j + 2] = Killpwd [2];
+	bufferCmd [j + 3] = Killpwd [3];
+	bufferCmd [j + 4] = MaskAdr;
+	bufferCmd [j + 5] = MaskLen;
+	
+    enviarChecksum(bufferCmd, (j + 6), porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];  
+  
+}
+
+void writeData_EPCC1G2CMD (HardwareSerial * porta, ResponseWriteDataCMD * resposta, byte WNum, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Wdt [240], int accessPassword, byte MaskAdr, byte MaskLen)
+{  	
+	byte comandSize = 14 + ENum + (2 * WNum);
+    int i = 0;
+	int j = 0;
+	int k = 0;
+    byte pwd [4];
+    pwd [0] = (byte) (accessPassword & 0x000000FF);
+    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("Escrevendo na TAG...");
+    Serial.println ("");
+	(*porta).write(comandSize);
+	bufferCmd [0] = comandSize;
+	
+    (*porta).write(writeData, 2);
+	memcpy (bufferCmd + 1, writeData, 2);
+	(*porta).write(WNum);
+	bufferCmd [3] = WNum;
+	(*porta).write(ENum);
+	bufferCmd [4] = ENum;
+	
+	if (WNum == 0)
+	{
+		Serial.print("Erro. WNum igual a 0. Valor invalido. ");
+		return;
+	} else if (WNum > 120)
+	{
+		Serial.print("Erro. WNum maior do que 120. Precisa ser menor ou igual. ");
+		return;
+	}
+	
+	if (ENum >= 15)
+	{
+		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
+		return; 
+	}
+	
+	for (j = 0; j < ENum; j++)
+	{
+		(*porta).write(EPC[j]);
+		bufferCmd [5 + j] = EPC[j];
+	}
+	j += 5;
+	
+	(*porta).write(Mem);
+	(*porta).write(WordPtr);
+	bufferCmd [j] = Mem;
+	bufferCmd [j + 1] = WordPtr;
+	j += 2;
+	
+	for (k = 0; k < (2 * WNum); k++)
+	{
+		(*porta).write(Wdt[k]);
+		bufferCmd [j + k] = Wdt[k];
+	}
+	j += k;
+	
+	(*porta).write(pwd,4);
+	(*porta).write(MaskAdr);
+	(*porta).write(MaskLen);
+	bufferCmd [j] = pwd [0];
+	bufferCmd [j + 1] = pwd [1];
+	bufferCmd [j + 2] = pwd [2];
+	bufferCmd [j + 3] = pwd [3];
+	bufferCmd [j + 4] = MaskAdr;
+	bufferCmd [j + 5] = MaskLen;
+	
+    enviarChecksum(bufferCmd, (j + 6), porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];  
+  
+}
+
+void readData_EPCC1G2CMD (HardwareSerial * porta, ResponseReadDataCMD * resposta, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Num, int accessPassword, byte MaskAdr, byte MaskLen)
+{  	
+	byte comandSize = 14 + ENum;
+    int i = 0;
+	int j = 0;
+	int indiceAtual = 0;
+	
+    byte pwd [4];
+    pwd [0] = (byte) (accessPassword & 0x000000FF);
+    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("Lendo dados da TAG...");
+    Serial.println ("");
+	(*porta).write(comandSize);
+	bufferCmd [0] = comandSize;
+	
+    (*porta).write(readData, 2);
+	memcpy (bufferCmd + 1, readData, 2);
+	(*porta).write(ENum);
+	bufferCmd [3] = ENum;
+
+	if (ENum >= 15)
+	{
+		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
+		return; 
+	}
+	
+	for (j = 0; j < ENum; j++)
+	{
+		(*porta).write(EPC[j]);
+		bufferCmd [4 + j] = EPC[j];
+	}
+	j += 4;
+	
+	(*porta).write(Mem);
+	(*porta).write(WordPtr);
+	(*porta).write(Num);
+	bufferCmd [j] = Mem;
+	bufferCmd [j + 1] = WordPtr;
+	bufferCmd [j + 2] = Num;
+	j += 3;
+	
+	
+	(*porta).write(pwd,4);
+	(*porta).write(MaskAdr);
+	(*porta).write(MaskLen);
+	bufferCmd [j] = pwd [0];
+	bufferCmd [j + 1] = pwd [1];
+	bufferCmd [j + 2] = pwd [2];
+	bufferCmd [j + 3] = pwd [3];
+	bufferCmd [j + 4] = MaskAdr;
+	bufferCmd [j + 5] = MaskLen;
+	
+    enviarChecksum(bufferCmd, (j + 6), porta);
+    
+    //retorno
+
+	while(!(*porta).available());
+	while((*porta).available()){
+	  if ((*porta).available()){      
+		bufferCmd [i] = (*porta).read();
+		
+		Serial.print(" - Serial 01: ");
+		Serial.print(bufferCmd [i], HEX);
+		Serial.println("");
+		i++;
+	  }
+	}
+
+	Serial.print ("Tamanho do buffer: ");
+	Serial.print(i);
+	Serial.println ("");
+
+	resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+	if (resposta->flagTimeout == 1)
+	{
+	   return;
+	}
+
+	resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+	if (resposta->flagCRC == 1)
+	{
+	   return;
+	}
+
+	resposta->len = bufferCmd [0];
+	resposta->adr = bufferCmd [1];
+	resposta->reCmd = bufferCmd [2];
+	resposta->status_ = bufferCmd [3];
+	resposta->qtdData = Num;
+
+	memcpy (&(resposta->data), bufferCmd + 4, (2 * Num) );
+	indiceAtual = (2 * Num) + 4;
+
+	resposta->LSB_CRC16 = bufferCmd [indiceAtual];
+	resposta->MSB_CRC16 = bufferCmd [indiceAtual + 1];;  
+
+}
+
+void printfResponseReadDataCMD (ResponseReadDataCMD * resposta){
+
+  int contData = 0;
+  
+  Serial.print("**** Resposta do CMD ****");
+  Serial.println ("");
+  
+  Serial.print("flagTimeout: ");
+  Serial.print(resposta->flagTimeout, HEX);
+  Serial.println ("");
+  if (resposta->flagTimeout == 1)
+  {
+     Serial.print("Nao houve resposta. Timeout. ");
+     Serial.println ("");
+     return; 
+  }
+  
+  Serial.print("flagCRC: ");
+  Serial.print(resposta->flagCRC, HEX);
+  Serial.println ("");
+  if (resposta->flagCRC == 1)
+  {  
+     Serial.print("Resposta do comando corrompida. CRC nao eh valido. ");
+     Serial.println ("");
+     return; 
+  }
+  
+  Serial.print("len: ");
+  Serial.print(resposta->len, HEX);
+  Serial.println("");
+  Serial.print("adr: ");
+  Serial.print(resposta->adr, HEX);
+  Serial.println("");
+  Serial.print("reCmd: ");
+  Serial.print(resposta->reCmd, HEX);
+  Serial.println("");
+  Serial.print("status: ");
+  Serial.print(resposta->status_, HEX);
+  Serial.println("");
+  Serial.print("Tamanho do dado: ");
+  Serial.print(resposta->qtdData, HEX);
+  Serial.println("");
+  
+  for (contData = 0; contData < (resposta->qtdData); contData++)
+  {
+    Serial.print("******   BYTE #");
+    Serial.print(contData + 1);
+    Serial.print("    ******");
+    Serial.println("");
+    Serial.print(" = ");
+    Serial.print(resposta-> data [contData], HEX);
+    Serial.println("");
+        
+  }
+  
+  Serial.print("LSB_CRC16: ");
+  Serial.print(resposta->LSB_CRC16, HEX);
+  Serial.println("");
+  Serial.print("MSB_CRC16: ");
+  Serial.print(resposta->MSB_CRC16, HEX);
+  Serial.println("");
+  
+  Serial.println("**** FIM ****");
+}
 
 
 
@@ -669,53 +1354,6 @@ void setBRate_ReadDefCMD (HardwareSerial * porta, ResponseSetBRateCMD * resposta
   
 }
 
-void printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta){
-  
-  Serial.print("**** Resposta do CMD ****");
-  Serial.println ("");
-  
-  Serial.print("flagTimeout: ");
-  Serial.print(resposta->flagTimeout, HEX);
-  Serial.println ("");
-  if (resposta->flagTimeout == 1)
-  {
-     Serial.print("Nao houve resposta. Timeout. ");
-     Serial.println ("");
-     return; 
-  }
-  
-  Serial.print("flagCRC: ");
-  Serial.print(resposta->flagCRC, HEX);
-  Serial.println ("");
-  if (resposta->flagCRC == 1)
-  {  
-     Serial.print("Resposta do comando corrompida. CRC nao eh valido. ");
-     Serial.println ("");
-     return; 
-  }
-  
-  Serial.print("len: ");
-  Serial.print(resposta->len, HEX);
-  Serial.println("");
-  Serial.print("adr: ");
-  Serial.print(resposta->adr, HEX);
-  Serial.println("");
-  Serial.print("reCmd: ");
-  Serial.print(resposta->reCmd, HEX);
-  Serial.println("");
-  Serial.print("status: ");
-  Serial.print(resposta->status_, HEX);
-  Serial.println("");
-  Serial.print("LSB_CRC16: ");
-  Serial.print(resposta->LSB_CRC16, HEX);
-  Serial.println("");
-  Serial.print("MSB_CRC16: ");
-  Serial.print(resposta->MSB_CRC16, HEX);
-  Serial.println("");
-  
-  Serial.println("**** FIM ****");
-  
-}
 
 void setPower_ReadDefCMD (HardwareSerial * porta, ResponseSetPowerCMD * resposta, byte power)
 {  
@@ -972,460 +1610,5 @@ void setScanTime_ReadDefCMD (HardwareSerial * porta, ResponseSetScanTimeCMD * re
   
 }
 
-void resetRdProtect_EPCC1G2CMD (HardwareSerial * porta, ResponseRstRProtectCMD * resposta, int accessPassword)
-{  	
-    int i = 0;
-    byte pwd [4];
-    pwd [0] = (byte) (accessPassword & 0x000000FF);
-    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
-    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
-    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
-
-	
-	
-    Serial.println("Resetando o ReadProtect da tag...");
-    Serial.println ("");
-    (*porta).write(resetReadProtect, 3);
-	(*porta).write(pwd,4);
-	
-	memcpy (bufferCmd, resetReadProtect, 3);
-	bufferCmd [4] = pwd [0];
-	bufferCmd [5] = pwd [1];
-	bufferCmd [6] = pwd [2];
-	bufferCmd [7] = pwd [3];
-    enviarChecksum(bufferCmd, 7, porta);
-    
-    while(!(*porta).available());
-    while((*porta).available()){
-      if ((*porta).available()){      
-        bufferCmd [i] = (*porta).read();
-        
-        Serial.print(" - Serial 01: ");
-        Serial.print(bufferCmd [i], HEX);
-        Serial.println("");
-        i++;
-      }
-    }
-    
-    Serial.print ("Tamanho do buffer: ");
-    Serial.print(i);
-    Serial.println ("");
-    
-    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
-    if (resposta->flagTimeout == 1)
-    {
-       return;
-    }
-    
-    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
-    if (resposta->flagCRC == 1)
-    {
-       return;
-    }
-    
-    resposta->len = bufferCmd [0];
-    resposta->adr = bufferCmd [1];
-    resposta->reCmd = bufferCmd [2];
-    resposta->status_ = bufferCmd [3];
-    resposta->LSB_CRC16 = bufferCmd [(i-2)];
-    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
-  
-}
-
-void checkRdProtectCMD_EPCC1G2CMD (HardwareSerial * porta, ResponseCheckRdProtectCMD * resposta)
-{  
-    int i = 0;
-
-    Serial.println("Checando ReadProtect da TAG...");
-    Serial.println ("");
-    (*porta).write(checkReadProtect, 3);
-    enviarChecksum(checkReadProtect, 3, porta);
-    
-    while(!(*porta).available());
-    while((*porta).available()){
-      if ((*porta).available()){      
-        bufferCmd [i] = (*porta).read();
-        
-        Serial.print(" - Serial 01: ");
-        Serial.print(bufferCmd [i], HEX);
-        Serial.println("");
-        i++;
-      }
-    }
-    
-    Serial.print ("Tamanho do buffer: ");
-    Serial.print(i);
-    Serial.println ("");
-    
-    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
-    if (resposta->flagTimeout == 1)
-    {
-       return;
-    }
-	
-	resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
-    if (resposta->flagCRC == 1)
-    {
-       return;
-    }
-    
-    resposta->len = bufferCmd [0];
-    resposta->adr = bufferCmd [1];
-    resposta->reCmd = bufferCmd [2];
-    resposta->status_ = bufferCmd [3];
-    resposta->readPro = bufferCmd [4];  
-    resposta->LSB_CRC16 = bufferCmd [(i-2)];
-    resposta->MSB_CRC16 = bufferCmd [(i-1)]; 
-  
-}
-
-
-
-void printfCheckRdProtectCMD (ResponseCheckRdProtectCMD * resposta){
-  
-  Serial.print("**** Resposta do CMD ****");
-  Serial.println ("");
-  
-  Serial.print("flagTimeout: ");
-  Serial.print(resposta->flagTimeout, HEX);
-  Serial.println ("");
-  if (resposta->flagTimeout == 1)
-  {
-     Serial.print("Nao houve resposta. Timeout. ");
-     return; 
-  }
-  
-  Serial.print("flagCRC: ");
-  Serial.print(resposta->flagCRC, HEX);
-  Serial.println ("");
-  if (resposta->flagCRC == 1)
-  {  
-     Serial.print("Resposta do comando corrompida. CRC nao eh valido. ");
-     return; 
-  }
-  
-  Serial.print("len: ");
-  Serial.print(resposta->len, HEX);
-  Serial.println("");
-  Serial.print("adr: ");
-  Serial.print(resposta->adr, HEX);
-  Serial.println("");
-  Serial.print("reCmd: ");
-  Serial.print(resposta->reCmd, HEX);
-  Serial.println("");
-  Serial.print("status: ");
-  Serial.print(resposta->status_, HEX);
-  Serial.println("");
-  Serial.print("ReadPro: ");
-  if (resposta->readPro == 0x00)
-  {
-	  Serial.println("Tag is protected");
-	  Serial.println("");
-  }
-  else if (resposta->readPro == 0x01)
-  {
-	Serial.println("Tag is unprotected");
-	Serial.println("");
-  }
-  else
-  {
-	Serial.println("Tag is unknown");
-	  Serial.println("");
-  }
-  
-  Serial.print("LSB_CRC16: ");
-  Serial.print(resposta->LSB_CRC16, HEX);
-  Serial.println("");
-  Serial.print("MSB_CRC16: ");
-  Serial.print(resposta->MSB_CRC16, HEX);
-  Serial.println("");
-  
-  Serial.println("**** FIM ****");
-  
-}
-
-
-
-
-void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
-{  	
-	byte comandSize = 11 + ENum;
-    int i = 0;
-	int j = 0;
-    byte pwd [4];
-    pwd [0] = (byte) (accessPassword & 0x000000FF);
-    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
-    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
-    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
-
-	
-	
-    Serial.println("ReadProtect da tag usando o EPC...");
-    Serial.println ("");
-	(*porta).write(comandSize);
-	bufferCmd [0] = comandSize;
-	
-    (*porta).write(readProtectWEPC, 2);
-	memcpy (bufferCmd + 1, readProtectWEPC, 2);
-	(*porta).write(ENum);
-	bufferCmd [3] = ENum;
-	
-	if (ENum >= 15)
-	{
-		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
-		return; 
-	}
-	
-	for (j = 0; j < ENum; j++)
-	{
-		(*porta).write(EPC[j]);
-		bufferCmd [4 + j] = EPC[j];
-	}
-	j += 4;
-	
-	(*porta).write(pwd,4);
-	(*porta).write(MaskAdr);
-	(*porta).write(MaskLen);
-	bufferCmd [j] = pwd [0];
-	bufferCmd [j + 1] = pwd [1];
-	bufferCmd [j + 2] = pwd [2];
-	bufferCmd [j + 3] = pwd [3];
-	bufferCmd [j + 4] = pwd [MaskAdr];
-	bufferCmd [j + 5] = pwd [MaskLen];
-	
-    enviarChecksum(bufferCmd, (j + 6), porta);
-    
-    while(!(*porta).available());
-    while((*porta).available()){
-      if ((*porta).available()){      
-        bufferCmd [i] = (*porta).read();
-        
-        Serial.print(" - Serial 01: ");
-        Serial.print(bufferCmd [i], HEX);
-        Serial.println("");
-        i++;
-      }
-    }
-    
-    Serial.print ("Tamanho do buffer: ");
-    Serial.print(i);
-    Serial.println ("");
-    
-    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
-    if (resposta->flagTimeout == 1)
-    {
-       return;
-    }
-    
-    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
-    if (resposta->flagCRC == 1)
-    {
-       return;
-    }
-    
-    resposta->len = bufferCmd [0];
-    resposta->adr = bufferCmd [1];
-    resposta->reCmd = bufferCmd [2];
-    resposta->status_ = bufferCmd [3];
-    resposta->LSB_CRC16 = bufferCmd [(i-2)];
-    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
-  
-}
-
-void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
-{  	
-	byte comandSize = 11 + ENum;
-    int i = 0;
-	int j = 0;
-    byte Killpwd [4];
-    Killpwd [0] = (byte) (accessPassword & 0x000000FF);
-    Killpwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
-    Killpwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
-    Killpwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
-
-	
-	
-    Serial.println("ReadProtect da tag usando o EPC...");
-    Serial.println ("");
-	(*porta).write(comandSize);
-	bufferCmd [0] = comandSize;
-	
-    (*porta).write(killTag, 2);
-	memcpy (bufferCmd + 1, killTag, 2);
-	(*porta).write(ENum);
-	bufferCmd [3] = ENum;
-	
-	if (ENum >= 15)
-	{
-		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
-		return; 
-	}
-	
-	for (j = 0; j < ENum; j++)
-	{
-		(*porta).write(EPC[j]);
-		bufferCmd [4 + j] = EPC[j];
-	}
-	j += 4;
-	
-	(*porta).write(Killpwd,4);
-	(*porta).write(MaskAdr);
-	(*porta).write(MaskLen);
-	bufferCmd [j] = Killpwd [0];
-	bufferCmd [j + 1] = Killpwd [1];
-	bufferCmd [j + 2] = Killpwd [2];
-	bufferCmd [j + 3] = Killpwd [3];
-	bufferCmd [j + 4] = Killpwd [MaskAdr];
-	bufferCmd [j + 5] = Killpwd [MaskLen];
-	
-    enviarChecksum(bufferCmd, (j + 6), porta);
-    
-    while(!(*porta).available());
-    while((*porta).available()){
-      if ((*porta).available()){      
-        bufferCmd [i] = (*porta).read();
-        
-        Serial.print(" - Serial 01: ");
-        Serial.print(bufferCmd [i], HEX);
-        Serial.println("");
-        i++;
-      }
-    }
-    
-    Serial.print ("Tamanho do buffer: ");
-    Serial.print(i);
-    Serial.println ("");
-    
-    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
-    if (resposta->flagTimeout == 1)
-    {
-       return;
-    }
-    
-    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
-    if (resposta->flagCRC == 1)
-    {
-       return;
-    }
-    
-    resposta->len = bufferCmd [0];
-    resposta->adr = bufferCmd [1];
-    resposta->reCmd = bufferCmd [2];
-    resposta->status_ = bufferCmd [3];
-    resposta->LSB_CRC16 = bufferCmd [(i-2)];
-    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
-  
-}
-
-void writeData_EPCC1G2CMD (HardwareSerial * porta, ResponseWriteDataCMD * resposta, byte WNum, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Wdt [240], int accessPassword, byte MaskAdr, byte MaskLen)
-{  	
-	byte comandSize = 14 + ENum + (2 * WNum);
-    int i = 0;
-	int j = 0;
-	int k = 0;
-    byte pwd [4];
-    pwd [0] = (byte) (accessPassword & 0x000000FF);
-    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
-    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
-    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
-
-	
-	
-    Serial.println("Escrevendo na TAG...");
-    Serial.println ("");
-	(*porta).write(comandSize);
-	bufferCmd [0] = comandSize;
-	
-    (*porta).write(writeData, 2);
-	memcpy (bufferCmd + 1, writeData, 2);
-	(*porta).write(WNum);
-	bufferCmd [3] = WNum;
-	(*porta).write(ENum);
-	bufferCmd [4] = ENum;
-	
-	if (WNum == 0)
-	{
-		Serial.print("Erro. WNum igual a 0. Valor invalido. ");
-		return;
-	} else if (WNum > 120)
-	{
-		Serial.print("Erro. WNum maior do que 120. Precisa ser menor ou igual. ");
-		return;
-	}
-	
-	if (ENum >= 15)
-	{
-		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
-		return; 
-	}
-	
-	for (j = 0; j < ENum; j++)
-	{
-		(*porta).write(EPC[j]);
-		bufferCmd [5 + j] = EPC[j];
-	}
-	j += 5;
-	
-	(*porta).write(Mem);
-	(*porta).write(WordPtr);
-	bufferCmd [j] = Mem;
-	bufferCmd [j + 1] = WordPtr;
-	j += 1;
-	
-	for (k = 0; k < (2 * WNum); k++)
-	{
-		(*porta).write(Wdt[k]);
-		bufferCmd [j + k] = Wdt[k];
-	}
-	j += k;
-	
-	(*porta).write(pwd,4);
-	(*porta).write(MaskAdr);
-	(*porta).write(MaskLen);
-	bufferCmd [j] = pwd [0];
-	bufferCmd [j + 1] = pwd [1];
-	bufferCmd [j + 2] = pwd [2];
-	bufferCmd [j + 3] = pwd [3];
-	bufferCmd [j + 4] = pwd [MaskAdr];
-	bufferCmd [j + 5] = pwd [MaskLen];
-	
-    enviarChecksum(bufferCmd, (j + 6), porta);
-    
-    while(!(*porta).available());
-    while((*porta).available()){
-      if ((*porta).available()){      
-        bufferCmd [i] = (*porta).read();
-        
-        Serial.print(" - Serial 01: ");
-        Serial.print(bufferCmd [i], HEX);
-        Serial.println("");
-        i++;
-      }
-    }
-    
-    Serial.print ("Tamanho do buffer: ");
-    Serial.print(i);
-    Serial.println ("");
-    
-    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
-    if (resposta->flagTimeout == 1)
-    {
-       return;
-    }
-    
-    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
-    if (resposta->flagCRC == 1)
-    {
-       return;
-    }
-    
-    resposta->len = bufferCmd [0];
-    resposta->adr = bufferCmd [1];
-    resposta->reCmd = bufferCmd [2];
-    resposta->status_ = bufferCmd [3];
-    resposta->LSB_CRC16 = bufferCmd [(i-2)];
-    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
-  
-}
 
 #endif 
