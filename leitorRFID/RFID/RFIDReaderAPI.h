@@ -45,13 +45,18 @@
 #include <String.h>
 #define PRESET_VALUE 0xFFFF
 #define POLYNOMIAL  0x8408
+#define PASSWORD_MEMORY 0x00
+#define EPC_MEMORY 0x01
+#define TID_MEMORY 0x02
+#define USER_MEMORY 0x03
 #define printfResponseSetAdrCMD printfResponseSimpleCMD
 #define printfResponseSetBRateCMD printfResponseSimpleCMD
 #define printfResponseSetPowerCMD printfResponseSimpleCMD
 #define printfResponseSetScanTimeCMD printfResponseSimpleCMD
 #define printfResponseRstRProtectCMD printfResponseSimpleCMD
 #define printfResponseRdProtectWEPCCMD printfResponseSimpleCMD 
-#define printfResponseKillTagCMD printfResponseSimpleCMD 
+#define printfResponseKillTagCMD printfResponseSimpleCMD
+#define printfResponseWriteDataCMD printfResponseSimpleCMD 
 
 const byte getReaderInfo[] = {0x04, 0x00, 0x21};
 const byte inventory[] = {0x04, 0x00, 0x01};
@@ -64,6 +69,7 @@ const byte resetReadProtect[] = {0x08,0x00,0x0A};
 const byte checkReadProtect[] = {0x04,0x00,0x0B};
 const byte readProtectWEPC[] = {0x00,0x08}; // Len eh variavel
 const byte killTag[] = {0x00,0x05}; // Len eh variavel
+const byte writeData[] = {0x00,0x03}; // Len eh variavel
 
 byte bufferCmd [262];
 
@@ -115,7 +121,7 @@ typedef struct retornoSimplesCmd {
   byte status_;
   byte LSB_CRC16;
   byte MSB_CRC16;  
-} ResponseSetAdrCMD, ResponseSetBRateCMD, ResponseSetPowerCMD, ResponseSetScanTimeCMD, ResponseRstRProtectCMD, ResponseRdProtectWEPC, ResponseKillTagCMD;
+} ResponseSetAdrCMD, ResponseSetBRateCMD, ResponseSetPowerCMD, ResponseSetScanTimeCMD, ResponseRstRProtectCMD, ResponseRdProtectWEPC, ResponseKillTagCMD, ResponseWriteDataCMD;
 
 typedef struct retornoWorkModeCmd {
   byte flagCRC;
@@ -1162,7 +1168,7 @@ void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * r
     (*porta).write(readProtectWEPC, 2);
 	memcpy (bufferCmd + 1, readProtectWEPC, 2);
 	(*porta).write(ENum);
-	bufferCmd [3] = comandSize;
+	bufferCmd [3] = ENum;
 	
 	if (ENum >= 15)
 	{
@@ -1175,6 +1181,7 @@ void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * r
 		(*porta).write(EPC[j]);
 		bufferCmd [4 + j] = EPC[j];
 	}
+	j += 4;
 	
 	(*porta).write(pwd,4);
 	(*porta).write(MaskAdr);
@@ -1246,7 +1253,7 @@ void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, 
     (*porta).write(killTag, 2);
 	memcpy (bufferCmd + 1, killTag, 2);
 	(*porta).write(ENum);
-	bufferCmd [3] = comandSize;
+	bufferCmd [3] = ENum;
 	
 	if (ENum >= 15)
 	{
@@ -1259,6 +1266,7 @@ void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, 
 		(*porta).write(EPC[j]);
 		bufferCmd [4 + j] = EPC[j];
 	}
+	j += 4;
 	
 	(*porta).write(Killpwd,4);
 	(*porta).write(MaskAdr);
@@ -1269,6 +1277,117 @@ void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, 
 	bufferCmd [j + 3] = Killpwd [3];
 	bufferCmd [j + 4] = Killpwd [MaskAdr];
 	bufferCmd [j + 5] = Killpwd [MaskLen];
+	
+    enviarChecksum(bufferCmd, (j + 6), porta);
+    
+    while(!(*porta).available());
+    while((*porta).available()){
+      if ((*porta).available()){      
+        bufferCmd [i] = (*porta).read();
+        
+        Serial.print(" - Serial 01: ");
+        Serial.print(bufferCmd [i], HEX);
+        Serial.println("");
+        i++;
+      }
+    }
+    
+    Serial.print ("Tamanho do buffer: ");
+    Serial.print(i);
+    Serial.println ("");
+    
+    resposta->flagTimeout = 0;               // TO-DO: Ainda falta fazer logica do timeout
+    if (resposta->flagTimeout == 1)
+    {
+       return;
+    }
+    
+    resposta->flagCRC = !checarChecksum ((unsigned char *) bufferCmd, (i - 2), (unsigned char) bufferCmd [i-2], (unsigned char)  bufferCmd [i-1]);   // 0 se tudo OK, 1 se tiver erro
+    if (resposta->flagCRC == 1)
+    {
+       return;
+    }
+    
+    resposta->len = bufferCmd [0];
+    resposta->adr = bufferCmd [1];
+    resposta->reCmd = bufferCmd [2];
+    resposta->status_ = bufferCmd [3];
+    resposta->LSB_CRC16 = bufferCmd [(i-2)];
+    resposta->MSB_CRC16 = bufferCmd [(i-1)];;  
+  
+}
+
+void writeData_EPCC1G2CMD (HardwareSerial * porta, ResponseWriteDataCMD * resposta, byte WNum, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Wdt [240], int accessPassword, byte MaskAdr, byte MaskLen)
+{  	
+	byte comandSize = 14 + ENum + (2 * WNum);
+    int i = 0;
+	int j = 0;
+	int k = 0;
+    byte pwd [4];
+    pwd [0] = (byte) (accessPassword & 0x000000FF);
+    pwd [1] = (byte) ((accessPassword & 0x0000FF00) >> 8);
+    pwd [2] = (byte) ((accessPassword & 0x00FF0000) >> 16);
+    pwd [3] = (byte) ((accessPassword & 0xFF000000) >> 24);
+
+	
+	
+    Serial.println("Escrevendo na TAG...");
+    Serial.println ("");
+	(*porta).write(comandSize);
+	bufferCmd [0] = comandSize;
+	
+    (*porta).write(writeData, 2);
+	memcpy (bufferCmd + 1, writeData, 2);
+	(*porta).write(WNum);
+	bufferCmd [3] = WNum;
+	(*porta).write(ENum);
+	bufferCmd [4] = ENum;
+	
+	if (WNum == 0)
+	{
+		Serial.print("Erro. WNum igual a 0. Valor invalido. ");
+		return;
+	} else if (WNum > 120)
+	{
+		Serial.print("Erro. WNum maior do que 120. Precisa ser menor ou igual. ");
+		return;
+	}
+	
+	if (ENum >= 15)
+	{
+		Serial.print("Erro. ENum maior ou igual a 15. Precisa ser menor. ");
+		return; 
+	}
+	
+	for (j = 0; j < ENum; j++)
+	{
+		(*porta).write(EPC[j]);
+		bufferCmd [5 + j] = EPC[j];
+	}
+	j += 5;
+	
+	(*porta).write(Mem);
+	(*porta).write(WordPtr);
+	bufferCmd [j] = Mem;
+	bufferCmd [j + 1] = WordPtr;
+	j += 1;
+	
+	for (k = 0; k < (2 * WNum); k++)
+	{
+		(*porta).write(Wdt[k]);
+		bufferCmd [j + k] = Wdt[k];
+	}
+	j += k;
+	
+	(*porta).write(pwd,4);
+	(*porta).write(MaskAdr);
+	(*porta).write(MaskLen);
+	bufferCmd [j] = pwd [0];
+	bufferCmd [j + 1] = pwd [1];
+	bufferCmd [j + 2] = pwd [2];
+	bufferCmd [j + 3] = pwd [3];
+	bufferCmd [j + 4] = pwd [MaskAdr];
+	bufferCmd [j + 5] = pwd [MaskLen];
 	
     enviarChecksum(bufferCmd, (j + 6), porta);
     
