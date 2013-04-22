@@ -6,6 +6,12 @@ Data: 22/04/2013
 
 */
 
+TO-DO:
+1. Para aumentar a robustez, fazer a checagem de timeout da porta serial. Nas situações em que o leitor parar de responder, o arduino não ficará travado em loop na espera da resposta. Note que já tem um campo em cada struct de retorno para sinalizar casos de timeout. Basta inserir um contador e sair do laço caso o limite máximo de tempo de espera seja ultrapassado.
+
+2. Na atual implementação, considera-se que o endereço ("ADR_READER") de cada leitor é fixo em tempo de compilação. Acredito que isso é suficiente para nossos propósitos. Caso futuramente seja necessário tornar o endereço dos leitores dinâmico, em tempo de execução, basta modificar os "Código dos comandos", no arquivo "RFIDReaderAPI.h". No momento, esses "Códigos dos comandos" são estáticos (constantes na memória flash). Será necessário torná-los dinâmicos (memória RAM).
+
+
 /*
 
 => RFIDReaderAPI.h

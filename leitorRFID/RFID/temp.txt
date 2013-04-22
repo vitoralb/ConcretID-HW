@@ -9,6 +9,7 @@ V.Beta Tests:
   void writeData_EPCC1G2CMD (HardwareSerial * porta, ResponseWriteDataCMD * resposta, byte WNum, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Wdt [240], int accessPassword, byte MaskAdr, byte MaskLen);
   void printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta);
 
+/*
   void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen);
   void printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta);
 
@@ -20,15 +21,15 @@ V.Beta Tests:
 
   void resetRdProtect_EPCC1G2CMD (HardwareSerial * porta, ResponseRstRProtectCMD * resposta, int accessPassword);
   void printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta);
-
+*/
 //Funcoes dos comandos Read-Defined
   /*void getReaderInfo_ReadDefCMD (HardwareSerial * porta, ResponseReaderInfoCMD * resposta);
   void printfResponseGetReaderInfo (ResponseReaderInfoCMD * resposta);
   */
+/*
   void setAdr_ReadDefCMD (HardwareSerial * porta, ResponseSetAdrCMD * resposta, byte adr);
   void printfResponseSetAdrCMD ( struct retornoSimplesCmd * resposta);
 
-/*
   void setBRate_ReadDefCMD (HardwareSerial * porta, ResponseSetBRateCMD * resposta, int baudrate);
   void printfResponseSetBRateCMD ( struct retornoSimplesCmd * resposta);
 

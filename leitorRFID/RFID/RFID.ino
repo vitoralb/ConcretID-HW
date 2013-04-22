@@ -27,18 +27,20 @@ void setup()
 }
 
 void loop(){
+
   
-/*    // Example of: CMD inventory
+    // Example of: CMD inventory
     ResponseInventoryCMD respInventory;
     inventory_EPCC1G2CMD (&Serial1, &respInventory);
     printfResponseInventoryCMD (&respInventory);   
     delay (500); 
-*/
-/*
-    
+
+
+    /*
     // Example of: CMD readData
+    byte tag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x53};
     ResponseReadDataCMD respReadData;
-    readData_EPCC1G2CMD (&Serial1, &respReadData, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Num, int accessPassword, byte MaskAdr, byte MaskLen);
+    readData_EPCC1G2CMD (&Serial1, &respReadData, 6, tag, EPC_MEMORY, 0x00, 8, 0x00, 0x00, 0x00);
     printfResponseReadDataCMD (&respReadData);
     delay (500); 
 
@@ -49,28 +51,40 @@ void loop(){
     delay (500);
 
     // Example of: CMD killTag
+    byte tag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x53};
     ResponseKillTagCMD respKillTag;
-    killTag_EPCC1G2CMD (&Serial1, &respKillTag, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen);
+    killTag_EPCC1G2CMD (&Serial1, &respKillTag, 6, tag, 0, 0x00, 0x00);
     printfResponseSimpleCMD (&respKillTag);
     delay (500);
 
-    // Example of: CMD rdProtectWEPC
+    */
+
+
+
+  // Example of: CMD rdProtectWEPC
+    byte tag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x53};
     ResponseRdProtectWEPC respRdProtectWEPC;
-    rdProtectWEPC_EPCC1G2CMD (&Serial1, &respRdProtectWEPC, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen);
+    rdProtectWEPC_EPCC1G2CMD (&Serial1, &respRdProtectWEPC, 6, tag, 836644864, 0x00, 0x00);
     printfResponseSimpleCMD (&respRdProtectWEPC);
     delay (500);
 
-    // Example of: CMD checkRdProtect
-    ResponseCheckRdProtectCMD respCheckRdProtect;
-    checkRdProtect_EPCC1G2CMD (&respCheckRdProtect);
-    printfCheckRdProtectCMD (&respCheckRdProtect);
-    delay (500);
+  /* 
 
     // Example of: CMD resetRdProtect
     ResponseRstRProtectCMD respRstRProtect;
-    resetRdProtect_EPCC1G2CMD (&Serial1, &respRstRProtect, int accessPassword);
+    resetRdProtect_EPCC1G2CMD (&Serial1, &respRstRProtect, 0);
     printfResponseSimpleCMD (&respRstRProtect);
+    delay (500);
+
+    
+    // Example of: CMD checkRdProtect
+    ResponseCheckRdProtectCMD respCheckRdProtect;
+    checkRdProtect_EPCC1G2CMD (&Serial1, &respCheckRdProtect);
+    printfCheckRdProtectCMD (&respCheckRdProtect);
     delay (500);*/
+
+    
+/*
 
   //Funcoes dos comandos Read-Defined
     // Example of: CMD getReaderInfo
@@ -79,23 +93,20 @@ void loop(){
     printfResponseGetReaderInfoCMD (&respReaderInfo);
     delay (500);
 
-/*
+
     // Example of: CMD setAdr
     ResponseSetAdrCMD respSetAdr;
-    setAdr_ReadDefCMD (&Serial1, &respSetAdr, byte adr);
+    setAdr_ReadDefCMD (&Serial1, &respSetAdr, 0x00);  // Setando endereco para 0x00. Range: 0x00 - 0xFE
     printfResponseSetAdrCMD (&respSetAdr);
     delay (500);
 
-*/
+
     // Example of: CMD setBRate
     ResponseSetBRateCMD respSetBRate;
     setBRate_ReadDefCMD (&Serial1, &respSetBRate, 57600); // Valores possiveis: 9600, 19200,38400,43000,56000,57600,115200 bps;
     printfResponseSetBRateCMD (&respSetBRate);
     delay (500);
-    
- 
-
-/*
+   
     // Example of: CMD setPower
     ResponseSetPowerCMD respSetPower;
     setPower_ReadDefCMD (&Serial1, &respSetPower, 20);  //Max é 30, min é 0

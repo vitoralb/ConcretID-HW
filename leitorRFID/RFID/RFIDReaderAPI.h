@@ -79,7 +79,12 @@
 #define printfResponseRdProtectWEPCCMD printfResponseSimpleCMD 
 #define printfResponseKillTagCMD printfResponseSimpleCMD
 #define printfResponseWriteDataCMD printfResponseSimpleCMD 
+#define ADR_READER_0
+//#define ADR_READER_1   // Replicar para os demais endereços, se necessário...
 
+#ifdef ADR_READER_0
+
+//Código dos comandos - Reader adr = 0x00
 const byte getReaderInfo[] = {0x04, 0x00, 0x21};
 const byte inventory[] = {0x04, 0x00, 0x01};
 const byte setAdr[] = {0x05,0x00,0x24};
@@ -93,6 +98,27 @@ const byte readProtectWEPC[] = {0x00,0x08}; // Len eh variavel
 const byte killTag[] = {0x00,0x05}; // Len eh variavel
 const byte writeData[] = {0x00,0x03}; // Len eh variavel
 const byte readData[] = {0x00,0x02}; // Len eh variavel
+
+#endif
+
+#ifdef ADR_READER_1
+
+//Código dos comandos - Reader adr = 0x01
+const byte getReaderInfo[] = {0x04, 0x01, 0x21};
+const byte inventory[] = {0x04, 0x01, 0x01};
+const byte setAdr[] = {0x05,0x01,0x24};
+const byte setBRate[] = {0x05,0x01,0x28};
+const byte setPower[] = {0x05,0x01,0x2F};
+const byte getWorkMode[] = {0x04, 0x01, 0x36};
+const byte setScanTime[] = {0x05,0x01,0x25};
+const byte resetReadProtect[] = {0x08,0x01,0x0A};
+const byte checkReadProtect[] = {0x04,0x01,0x0B};
+const byte readProtectWEPC[] = {0x01,0x08}; // Len eh variavel
+const byte killTag[] = {0x01,0x05}; // Len eh variavel
+const byte writeData[] = {0x01,0x03}; // Len eh variavel
+const byte readData[] = {0x01,0x02}; // Len eh variavel
+
+#endif
 
 
 byte bufferCmd [262];
@@ -506,10 +532,10 @@ void resetRdProtect_EPCC1G2CMD (HardwareSerial * porta, ResponseRstRProtectCMD *
 	(*porta).write(pwd,4);
 	
 	memcpy (bufferCmd, resetReadProtect, 3);
-	bufferCmd [4] = pwd [0];
-	bufferCmd [5] = pwd [1];
-	bufferCmd [6] = pwd [2];
-	bufferCmd [7] = pwd [3];
+	bufferCmd [3] = pwd [0];
+	bufferCmd [4] = pwd [1];
+	bufferCmd [5] = pwd [2];
+	bufferCmd [6] = pwd [3];
     enviarChecksum(bufferCmd, 7, porta);
     
     while(!(*porta).available());
@@ -665,7 +691,7 @@ void printfCheckRdProtectCMD (ResponseCheckRdProtectCMD * resposta){
 
 void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
 {  	
-	byte comandSize = 11 + ENum;
+	byte comandSize = 11 + (2 * ENum);
     int i = 0;
 	int j = 0;
     byte pwd [4];
@@ -692,7 +718,7 @@ void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * r
 		return; 
 	}
 	
-	for (j = 0; j < ENum; j++)
+	for (j = 0; j < (2 * ENum); j++)
 	{
 		(*porta).write(EPC[j]);
 		bufferCmd [4 + j] = EPC[j];
@@ -750,7 +776,7 @@ void rdProtectWEPC_EPCC1G2CMD (HardwareSerial * porta, ResponseRdProtectWEPC * r
 
 void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, byte ENum, byte EPC [16], int accessPassword, byte MaskAdr, byte MaskLen)
 {  	
-	byte comandSize = 11 + ENum;
+	byte comandSize = 11 + (2* ENum);
     int i = 0;
 	int j = 0;
     byte Killpwd [4];
@@ -761,7 +787,7 @@ void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, 
 
 	
 	
-    Serial.println("ReadProtect da tag usando o EPC...");
+    Serial.println("Matando a tag...");
     Serial.println ("");
 	(*porta).write(comandSize);
 	bufferCmd [0] = comandSize;
@@ -777,7 +803,7 @@ void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, 
 		return; 
 	}
 	
-	for (j = 0; j < ENum; j++)
+	for (j = 0; j < (2* ENum); j++)
 	{
 		(*porta).write(EPC[j]);
 		bufferCmd [4 + j] = EPC[j];
@@ -946,7 +972,7 @@ void writeData_EPCC1G2CMD (HardwareSerial * porta, ResponseWriteDataCMD * respos
 
 void readData_EPCC1G2CMD (HardwareSerial * porta, ResponseReadDataCMD * resposta, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Num, int accessPassword, byte MaskAdr, byte MaskLen)
 {  	
-	byte comandSize = 14 + ENum;
+	byte comandSize = 14 + (2 * ENum);
     int i = 0;
 	int j = 0;
 	int indiceAtual = 0;
@@ -975,7 +1001,7 @@ void readData_EPCC1G2CMD (HardwareSerial * porta, ResponseReadDataCMD * resposta
 		return; 
 	}
 	
-	for (j = 0; j < ENum; j++)
+	for (j = 0; j < (2 * ENum); j++)
 	{
 		(*porta).write(EPC[j]);
 		bufferCmd [4 + j] = EPC[j];
@@ -1037,10 +1063,10 @@ void readData_EPCC1G2CMD (HardwareSerial * porta, ResponseReadDataCMD * resposta
 	resposta->adr = bufferCmd [1];
 	resposta->reCmd = bufferCmd [2];
 	resposta->status_ = bufferCmd [3];
-	resposta->qtdData = Num;
+	resposta->qtdData = (resposta->len) - 5;
 
-	memcpy (&(resposta->data), bufferCmd + 4, (2 * Num) );
-	indiceAtual = (2 * Num) + 4;
+	memcpy (&(resposta->data), bufferCmd + 4, resposta->qtdData);
+	indiceAtual = resposta->qtdData + 4;
 
 	resposta->LSB_CRC16 = bufferCmd [indiceAtual];
 	resposta->MSB_CRC16 = bufferCmd [indiceAtual + 1];;  
@@ -1254,7 +1280,7 @@ void setAdr_ReadDefCMD (HardwareSerial * porta, ResponseSetAdrCMD * resposta, by
     (*porta).write(adr);
 	
     memcpy (bufferCmd, setAdr, 3);
-    bufferCmd [4] = adr;
+    bufferCmd [3] = adr;
     enviarChecksum(bufferCmd, 4, porta);
     
     while(!(*porta).available());
