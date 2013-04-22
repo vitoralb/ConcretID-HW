@@ -30,102 +30,89 @@
 #include "contiki.h"
 #include "contiki-lib.h"
 #include "contiki-net.h"
-
+#include <stdio.h>
 #include <string.h>
-#include "dev/leds.h"
-#include "dev/button-sensor.h"
-#include "debug.h"
 
-#define DEBUG DEBUG_PRINT
-#include "net/uip-debug.h"
+#define SEND_INTERVAL  	CLOCK_SECOND
+#define BUF_LEN		40
+#define INTERV_BEG 5
+#define INTERV_END 10
+static char buf[BUF_LEN];
 
-#define SEND_INTERVAL		2 * CLOCK_SECOND
-#define MAX_PAYLOAD_LEN		40
+#define HISTORY_SIZE 100
+static struct { uint32_t id, time; } history[HISTORY_SIZE];
+uint32_t cur_time;
 
-static char buf[MAX_PAYLOAD_LEN];
-
-/* Our destinations and udp conns. One link-local and one global */
-#define LOCAL_CONN_PORT 3001
-static struct uip_udp_conn *l_conn;
-
-static struct uip_udp_conn *broadcast_conn;
-
+static struct uip_udp_conn *conn;
 
 /*---------------------------------------------------------------------------*/
-PROCESS(udp_client_process, "UDP client process");
-#if BUTTON_SENSOR_ON
-PROCESS_NAME(ping6_process);
-AUTOSTART_PROCESSES(&udp_client_process, &ping6_process);
-#else
-AUTOSTART_PROCESSES(&udp_client_process);
-#endif
+PROCESS(fixed_process, "Fixed process");
+AUTOSTART_PROCESSES(&fixed_process);
 /*---------------------------------------------------------------------------*/
 static void
 tcpip_handler(void)
 {
-  leds_on(LEDS_GREEN);
+  static uint32_t number;
+  static uint16_t loc,i;
   if(uip_newdata()) {
-    putstring("0x");
-    puthex(uip_datalen());
-    putstring(" bytes response=0x");
-    puthex((*(uint16_t *) uip_appdata) >> 8);
-    puthex((*(uint16_t *) uip_appdata) & 0xFF);
-    putchar('\n');
+    switch( ((char*)uip_appdata)[0] ) {
+    case 'A': // anuncio
+      memcpy(&number, (char*)uip_appdata+1, sizeof(uint32_t));
+      //printf("anuncio %lu\n", number);
+      loc = -1;
+      for( i = 0 ; loc == -1 && i < HISTORY_SIZE ; ++ i ) {
+    	  if( history[i].id == number ) {
+    	    loc = i;
+    	  }
+      }
+      if( loc != -1 ) {
+    	  if( cur_time-INTERV_END <= history[loc].time && history[loc].time <= cur_time-INTERV_BEG ) {
+    	    printf("abrir %lu\n", number);
+    	    history[loc].time = 0;
+      	} else if( history[loc].time < cur_time-INTERV_END ) {
+    	    history[loc].time = cur_time;
+    	  }
+      } else {
+    	  loc = 0;
+    	  for( i = 1 ; i < HISTORY_SIZE ; ++ i ) {
+		    if( history[i].time < history[loc].time ) {
+		      loc = i;
+		    }
+		  }
+		  history[loc].id = number;
+		  history[loc].time = cur_time;
+      }
+      break;
+    default: putchar(((char*)uip_appdata)[0]);
+    }
   }
-  leds_off(LEDS_GREEN);
-  return;
+
 }
 /*---------------------------------------------------------------------------*/
 static void
 timeout_handler(void)
 {
-  static int seq_id = 0;
-  struct uip_udp_conn *this_conn;
-
-  leds_on(LEDS_RED);
-  memset(buf, 0, MAX_PAYLOAD_LEN);
-
-  PRINTF("Client to: ");
-  PRINT6ADDR(&broadcast_conn->ripaddr);
-
-  memcpy(buf, &seq_id, sizeof(seq_id));
-
-  PRINTF(" Remote Port %u,", UIP_HTONS(broadcast_conn->rport));
-  PRINTF(" (msg=0x%04x), %u bytes\n", *(uint16_t *) buf, sizeof(seq_id));
-
-  uip_udp_packet_send(broadcast_conn, buf, sizeof(seq_id));
-  seq_id++;
-  leds_off(LEDS_RED);
+  cur_time++;
+  buf[0] = 'P';
+  uip_create_linklocal_allnodes_mcast(&conn->ripaddr);
+  conn->rport = UIP_HTONS(3000);
+  uip_udp_packet_send(conn, buf, 1);
+  uip_create_unspecified(&conn->ripaddr);
+  conn->rport = 0;
 }
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(udp_client_process, ev, data)
+PROCESS_THREAD(fixed_process, ev, data)
 {
   static struct etimer et;
-  uip_ipaddr_t ipaddr;
-
+  static uip_ipaddr_t ipaddr;
   PROCESS_BEGIN();
-  PRINTF("UDP client process started\n");
 
-//  uip_ip6addr(&ipaddr, 0xfe80, 0, 0, 0, 0x0212, 0x4b00, 0x01f1, 0xb579);
-
-  uip_create_linklocal_allnodes_mcast(&ipaddr);
-  /* new connection with remote host */
-  broadcast_conn = udp_new(&ipaddr, UIP_HTONS(3000), NULL);
-  if(!broadcast_conn) {
-    PRINTF("udp_new l_conn error.\n");
-  }
-  udp_bind(broadcast_conn, UIP_HTONS(LOCAL_CONN_PORT));
-
-  PRINTF("Link-Local connection with ");
-  PRINT6ADDR(&l_conn->ripaddr);
-  PRINTF(" local/remote port %u/%u\n",
-         UIP_HTONS(l_conn->lport), UIP_HTONS(l_conn->rport));
-
-  l_conn = udp_new(NULL, UIP_HTONS(0), NULL);
-  udp_bind(l_conn, UIP_HTONS(3000));
+  conn = udp_new(NULL, UIP_HTONS(0), NULL);
+  udp_bind(conn, UIP_HTONS(3000));
+  memset(history,0,sizeof(history));
 
   etimer_set(&et, SEND_INTERVAL);
-
+  cur_time = 1;
   while(1) {
     PROCESS_YIELD();
     if(etimer_expired(&et)) {
