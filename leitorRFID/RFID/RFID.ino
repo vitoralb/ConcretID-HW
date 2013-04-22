@@ -28,11 +28,12 @@ void setup()
 
 void loop(){
   
-    // Example of: CMD inventory
+/*    // Example of: CMD inventory
     ResponseInventoryCMD respInventory;
     inventory_EPCC1G2CMD (&Serial1, &respInventory);
     printfResponseInventoryCMD (&respInventory);   
     delay (500); 
+*/
 /*
     
     // Example of: CMD readData
@@ -71,44 +72,48 @@ void loop(){
     printfResponseSimpleCMD (&respRstRProtect);
     delay (500);*/
 
-/*  //Funcoes dos comandos Read-Defined
+  //Funcoes dos comandos Read-Defined
     // Example of: CMD getReaderInfo
     ResponseReaderInfoCMD respReaderInfo;
     getReaderInfo_ReadDefCMD (&Serial1, &respReaderInfo);
-    printfResponseGetReaderInfoCMD2 (&respReaderInfo);
+    printfResponseGetReaderInfoCMD (&respReaderInfo);
     delay (500);
 
+/*
     // Example of: CMD setAdr
     ResponseSetAdrCMD respSetAdr;
     setAdr_ReadDefCMD (&Serial1, &respSetAdr, byte adr);
     printfResponseSetAdrCMD (&respSetAdr);
     delay (500);
 
+*/
     // Example of: CMD setBRate
     ResponseSetBRateCMD respSetBRate;
-    setBRate_ReadDefCMD (&Serial1, &respSetBRate, int baudrate);
+    setBRate_ReadDefCMD (&Serial1, &respSetBRate, 57600); // Valores possiveis: 9600, 19200,38400,43000,56000,57600,115200 bps;
     printfResponseSetBRateCMD (&respSetBRate);
     delay (500);
+    
+ 
 
+/*
     // Example of: CMD setPower
     ResponseSetPowerCMD respSetPower;
-    setPower_ReadDefCMD (&Serial1, &respSetPower, byte power);
-    printfResponseSetPowerCMD ( struct retornoSimplesCmd * resposta);
+    setPower_ReadDefCMD (&Serial1, &respSetPower, 20);  //Max é 30, min é 0
+    printfResponseSetPowerCMD (&respSetPower);
     delay (500);
 
     // Example of: CMD setScanTime
-    ResponseSetScanTimeCMD resoSetScanTime;
-    setScanTime_ReadDefCMD (&Serial1, ResponseSetScanTimeCMD * resposta, int scantime_x100ms);
-    printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta);
+    ResponseSetScanTimeCMD respSetScanTime;
+    setScanTime_ReadDefCMD (&Serial1, &respSetScanTime, 10);  // Setando para 10 * 100ms
+    printfResponseSimpleCMD (&respSetScanTime);
     delay (500);
-
     // Example of: CMD getWorkMode
     ResponseWorkModeCMD respWorkMode;
-    getWorkMode_ReadDefCMD (&Serial1, ResponseWorkModeCMD * resposta);
-    printfResponseGetWorkModeCMD (ResponseWorkModeCMD * resposta);
+    getWorkMode_ReadDefCMD (&Serial1, &respWorkMode);
+    printfResponseGetWorkModeCMD (&respWorkMode);
     delay (500);
  
-*/}
+*/  }
 
 
 

@@ -1312,7 +1312,7 @@ void setBRate_ReadDefCMD (HardwareSerial * porta, ResponseSetBRateCMD * resposta
 			paramBRate = 2;
 			break;
 		case 43000:
-			paramBRate = 3;
+			paramBRate = (byte) 3;
 			break;
 		case 56000:
 			paramBRate = 4;
@@ -1329,13 +1329,14 @@ void setBRate_ReadDefCMD (HardwareSerial * porta, ResponseSetBRateCMD * resposta
 			return;
 	
 	}
-    Serial.println("Setando o baudrate do leitor...");
+    Serial.print("Setando o baudrate do leitor... Valor: ");
+    Serial.print(paramBRate, HEX);
     Serial.println ("");
     (*porta).write(setBRate, 3);
 	(*porta).write(paramBRate);
 	
 	memcpy (bufferCmd, setBRate, 3);
-	bufferCmd [4] = paramBRate;
+	bufferCmd [3] = paramBRate;
     enviarChecksum(bufferCmd, 4, porta);
     
     while(!(*porta).available());
@@ -1384,14 +1385,16 @@ void setPower_ReadDefCMD (HardwareSerial * porta, ResponseSetPowerCMD * resposta
      {
        Serial.println("Valor especificado para o power esta fora do range. Comando nao enviado. Favor tentar novamente.");
        Serial.println ("");
+       return;
      }
+    
     Serial.println("Setando a potencia do leitor...");
     Serial.println ("");
     (*porta).write(setPower, 3);
     (*porta).write(power);
 	
     memcpy (bufferCmd, setPower, 3);
-    bufferCmd [4] = power;
+    bufferCmd [3] = power;
     enviarChecksum(bufferCmd, 4, porta);
     
     while(!(*porta).available());
@@ -1549,12 +1552,16 @@ void printfResponseGetWorkModeCMD (ResponseWorkModeCMD * resposta){
   Serial.println("");
   Serial.print("First_Adr: ");
   Serial.print(resposta->First_Adr, HEX);
+  Serial.println("");
   Serial.print("Word_Num: ");
   Serial.print(resposta->Word_Num, HEX);
+  Serial.println("");
   Serial.print("Tag_Time: ");
   Serial.print(resposta->Tag_Time, HEX);
+  Serial.println("");
   Serial.print("accuracy: ");
   Serial.print(resposta->accuracy, HEX);
+  Serial.println("");
   Serial.print("OffsetTime: ");
   Serial.print(resposta->OffsetTime, HEX);
   Serial.println("");
@@ -1579,11 +1586,14 @@ void setScanTime_ReadDefCMD (HardwareSerial * porta, ResponseSetScanTimeCMD * re
 	if (scantime_x100ms >= 3 && scantime_x100ms <= 255)
 	{
 		paramScanTime = (byte) scantime_x100ms;
-	}
+    Serial.print("O scantime_x100ms setado sera: ");
+    Serial.print(scantime_x100ms, HEX);
+    Serial.println("");
+  }
 	else
 	{
 		paramScanTime = 0x0A;
-		Serial.println("ScanTime fora do range. O valor default (1 segundo) sera setado. ");
+		Serial.println("ScanTime fora do range. O valor default (1000ms) sera setado. ");
 		Serial.println ("");
 	}
 	
@@ -1591,7 +1601,7 @@ void setScanTime_ReadDefCMD (HardwareSerial * porta, ResponseSetScanTimeCMD * re
 	(*porta).write(paramScanTime);
 	
 	memcpy (bufferCmd, setScanTime, 3);
-	bufferCmd [4] = paramScanTime;
+	bufferCmd [3] = paramScanTime;
     enviarChecksum(bufferCmd, 4, porta);
     
     while(!(*porta).available());

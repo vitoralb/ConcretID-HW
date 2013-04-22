@@ -1,8 +1,27 @@
-V.Beta Tests:
+/*
 
- /*void inventory_EPCC1G2CMD (HardwareSerial * porta, ResponseInventoryCMD * resposta);
-  void printfResponseInventoryCMD (ResponseInventoryCMD * resposta);
+Manual da RFIDReader - API
+Autor: Felipe Salgueiro Oliveira e Silva
+Data: 22/04/2013
+
 */
+
+/*
+
+=> RFIDReaderAPI.h
+Este arquivo possui a implementação em C da API.
+
+=> RFID.ino
+Este arquivo é um exemplo de código para arduino mostrando como utilizar todas as funções da RFIDReader API.
+
+Segue a baixo a listagem de todas as funções implementadas. Os nomes sãoauto-explicativos. Qualquer dúvida, vide manual "UHF RFID Reader User's Manual v1.8"
+
+*/
+
+
+ void inventory_EPCC1G2CMD (HardwareSerial * porta, ResponseInventoryCMD * resposta);
+  void printfResponseInventoryCMD (ResponseInventoryCMD * resposta);
+
   void readData_EPCC1G2CMD (HardwareSerial * porta, ResponseReadDataCMD * resposta, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Num, int accessPassword, byte MaskAdr, byte MaskLen);
   void printfResponseReadDataCMD (ResponseReadDataCMD * resposta);
 
@@ -22,20 +41,20 @@ V.Beta Tests:
   void printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta);
 
 //Funcoes dos comandos Read-Defined
-  /*void getReaderInfo_ReadDefCMD (HardwareSerial * porta, ResponseReaderInfoCMD * resposta);
+  void getReaderInfo_ReadDefCMD (HardwareSerial * porta, ResponseReaderInfoCMD * resposta);
   void printfResponseGetReaderInfo (ResponseReaderInfoCMD * resposta);
-  */
+  
   void setAdr_ReadDefCMD (HardwareSerial * porta, ResponseSetAdrCMD * resposta, byte adr);
   void printfResponseSetAdrCMD ( struct retornoSimplesCmd * resposta);
 
-/*
   void setBRate_ReadDefCMD (HardwareSerial * porta, ResponseSetBRateCMD * resposta, int baudrate);
   void printfResponseSetBRateCMD ( struct retornoSimplesCmd * resposta);
 
   void setPower_ReadDefCMD (HardwareSerial * porta, ResponseSetPowerCMD * resposta, byte power);
   void printfResponseSetPowerCMD ( struct retornoSimplesCmd * resposta);
+
   void setScanTime_ReadDefCMD (HardwareSerial * porta, ResponseSetScanTimeCMD * resposta, int scantime_x100ms);
   void printfResponseSimpleCMD ( struct retornoSimplesCmd * resposta);
-*/
-/*  void getWorkMode_ReadDefCMD (HardwareSerial * porta, ResponseWorkModeCMD * resposta);
-  void printfResponseGetWorkModeCMD (ResponseWorkModeCMD * resposta);*/
+
+  void getWorkMode_ReadDefCMD (HardwareSerial * porta, ResponseWorkModeCMD * resposta);
+  void printfResponseGetWorkModeCMD (ResponseWorkModeCMD * resposta);
