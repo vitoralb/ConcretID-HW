@@ -1,0 +1,28 @@
+EPC tag preta:   len C
+- Serial 01: E2
+ - Serial 01: 0
+ - Serial 01: 75
+ - Serial 01: 15
+ - Serial 01: 15
+ - Serial 01: 8
+ - Serial 01: 0
+ - Serial 01: 75
+ - Serial 01: 14
+ - Serial 01: 80
+ - Serial 01: 7C
+ - Serial 01: FC
+
+ EPC tag vermelha:
+ - LENGTH: C
+ - DATA 0: E2
+ - DATA 1: 0
+ - DATA 2: 10
+ - DATA 3: 1
+ - DATA 4: 83
+ - DATA 5: 18
+ - DATA 6: 2
+ - DATA 7: 70
+ - DATA 8: 20
+ - DATA 9: 50
+ - DATA 10: 43
+ - DATA 11: 53
