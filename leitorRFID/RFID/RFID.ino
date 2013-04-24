@@ -28,65 +28,59 @@ void setup()
 
 void loop(){
 
-  
+    byte senha [4] = {0x01,0x02,0x03,0x04};
+    byte tag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x53};
+    byte newTag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x99};
+
+
+  //**************************** Funcoes dos comandos EPCC1G2
     // Example of: CMD inventory
     ResponseInventoryCMD respInventory;
     inventory_EPCC1G2CMD (&Serial1, &respInventory);
     printfResponseInventoryCMD (&respInventory);   
     delay (500); 
 
+    
 
-    /*
     // Example of: CMD readData
-    byte tag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x53};
     ResponseReadDataCMD respReadData;
-    readData_EPCC1G2CMD (&Serial1, &respReadData, 6, tag, EPC_MEMORY, 0x00, 8, 0x00, 0x00, 0x00);
+    readData_EPCC1G2CMD (&Serial1, &respReadData, 6, tag, USER_MEMORY, 0x00, 4, 0, 0x00, 0x00);
     printfResponseReadDataCMD (&respReadData);
     delay (500); 
-
     // Example of: CMD writeData
+    
     ResponseWriteDataCMD respWriteData;
-    writeData_EPCC1G2CMD (&Serial1, &respWriteData, byte WNum, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Wdt [240], int accessPassword, byte MaskAdr, byte MaskLen);
+    writeData_EPCC1G2CMD (&Serial1, &respWriteData, 6, 6, tag, 0x01, 0x02, newTag, 0, 0x00, 0x00);   // O campo EPC começa na posição 0x02 do banco de memória EPC_MEMORY
     printfResponseSimpleCMD (&respWriteData);
     delay (500);
 
+
     // Example of: CMD killTag
-    byte tag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x53};
     ResponseKillTagCMD respKillTag;
-    killTag_EPCC1G2CMD (&Serial1, &respKillTag, 6, tag, 0, 0x00, 0x00);
+    killTag_EPCC1G2CMD (&Serial1, &respKillTag, 6, tag, 67305985, 0x00, 0x00);
     printfResponseSimpleCMD (&respKillTag);
     delay (500);
-
-    */
-
-
+    
 
   // Example of: CMD rdProtectWEPC
-    byte tag[16] = {0xE2,0x00,0x10,0x01,0x83,0x18,0x02,0x70,0x20,0x50,0x43,0x53};
     ResponseRdProtectWEPC respRdProtectWEPC;
     rdProtectWEPC_EPCC1G2CMD (&Serial1, &respRdProtectWEPC, 6, tag, 836644864, 0x00, 0x00);
     printfResponseSimpleCMD (&respRdProtectWEPC);
     delay (500);
-
-  /* 
 
     // Example of: CMD resetRdProtect
     ResponseRstRProtectCMD respRstRProtect;
     resetRdProtect_EPCC1G2CMD (&Serial1, &respRstRProtect, 0);
     printfResponseSimpleCMD (&respRstRProtect);
     delay (500);
-
     
     // Example of: CMD checkRdProtect
     ResponseCheckRdProtectCMD respCheckRdProtect;
     checkRdProtect_EPCC1G2CMD (&Serial1, &respCheckRdProtect);
     printfCheckRdProtectCMD (&respCheckRdProtect);
-    delay (500);*/
+    delay (500);
 
-    
-/*
-
-  //Funcoes dos comandos Read-Defined
+  //****************************Funcoes dos comandos Read-Defined
     // Example of: CMD getReaderInfo
     ResponseReaderInfoCMD respReaderInfo;
     getReaderInfo_ReadDefCMD (&Serial1, &respReaderInfo);
@@ -118,13 +112,14 @@ void loop(){
     setScanTime_ReadDefCMD (&Serial1, &respSetScanTime, 10);  // Setando para 10 * 100ms
     printfResponseSimpleCMD (&respSetScanTime);
     delay (500);
+
     // Example of: CMD getWorkMode
     ResponseWorkModeCMD respWorkMode;
     getWorkMode_ReadDefCMD (&Serial1, &respWorkMode);
     printfResponseGetWorkModeCMD (&respWorkMode);
     delay (500);
  
-*/  }
+  }
 
 
 

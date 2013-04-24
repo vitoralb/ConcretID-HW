@@ -861,7 +861,7 @@ void killTag_EPCC1G2CMD (HardwareSerial * porta, ResponseKillTagCMD * resposta, 
 
 void writeData_EPCC1G2CMD (HardwareSerial * porta, ResponseWriteDataCMD * resposta, byte WNum, byte ENum, byte EPC [16], byte Mem, byte WordPtr, byte Wdt [240], int accessPassword, byte MaskAdr, byte MaskLen)
 {  	
-	byte comandSize = 14 + ENum + (2 * WNum);
+	byte comandSize = 14 + (2 * ENum) + (2 * WNum);
     int i = 0;
 	int j = 0;
 	int k = 0;
@@ -901,7 +901,7 @@ void writeData_EPCC1G2CMD (HardwareSerial * porta, ResponseWriteDataCMD * respos
 		return; 
 	}
 	
-	for (j = 0; j < ENum; j++)
+	for (j = 0; j < (2 * ENum); j++)
 	{
 		(*porta).write(EPC[j]);
 		bufferCmd [5 + j] = EPC[j];
