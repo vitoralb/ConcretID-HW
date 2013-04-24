@@ -1,6 +1,6 @@
 /*
 
-Manual da RFIDReader - API
+Manual da RFIDReader - API   :: Release v1.0
 Autor: Felipe Salgueiro Oliveira e Silva
 Data: 22/04/2013
 
