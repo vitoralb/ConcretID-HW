@@ -7,30 +7,39 @@ class PostSerialData():
 		self.usb_port = usb_port
 		self.baud_rate = baud_rate
 		self.url = url
-		self.ser = serial.Serial("/dev/"+ usb_port , baudrate=self.baud_rate, timeout=1)
+		self.ser = serial.Serial("/dev/" + usb_port , baudrate=self.baud_rate, timeout=1)
 	
-	def post_location(self, data):
-		idt, alt, longi = data.split(":")[1][:-1].split(",") # pega a string no formato "L:id,lat,longi;" e extrai os 3 dados dela
+	def post_location(self, data): 
+		rfid, alt, longi = data.split(":")[1][:-1].split(",") # pega a string no formato "L:id,lat,longi;" e extrai os 3 dados dela
 		print "postando nova localizacao: " + idt + ", " + alt + ", " + longi
-		payload = {'id': idt, 'altitude': alt, 'longitude': longi}
+		payload = {'rfid': rfid, 'x': longi, 'y': alt, 'status': ""}
 		req = requests.post(self.url, data=payload)
+		if req.status_code == 200:
+			print "localizacao postada com sucesso"
+		else:
+			print "problema no post"
 
-		print req.text
-		
-	def post_status(self, data):
-		idt, status = data.split(":")[1][:1].split(",") # pega a string no formato "S:id,status;" e extrai os 2 dados dela
+
+	#NÃO UTILIZADO PARA O DEMON DAY!!
+	def post_status(self, data): 
+		rfi, status = data.split(":")[1][:1].split(",") # pega a string no formato "S:id,status;" e extrai os 2 dados dela
 		print "postando novo status: " + idt + ", " + status
-		payload = {'id': idt, 'status': status}
+		payload = {'rfid': rfid, 'status': status}
 		req = requests.post(self.url, data=payload)
-		print req.text	
+		if req.status_code == 200:
+			print "status postado com sucesso"
+		else:
+			print "problema no post"
 
-	def get_info(self, data):
-		idt = data[2:-1] #pega o unico dado em "I:id;"
+
+	#NÃO UTILIZADO PARA O DEMON DAY!!!
+	def get_info(self, data): # obter info. sobre uma peca no servidor
+		rfid = data[2:-1] #pega o unico dado em "I:id;"
 		print "solicitando informacoes de: " + idt
-		payload = {'id': idt}
-		req = requests.get(self.url, data=payload)
+		payload = {'rfid': rfid}
+		req = requests.get(self.url, params=payload)
 		print req.content
-		self.ser.write(req)
+		self.ser.write(req.content)
 		
 
 	def start_posting(self):
@@ -49,7 +58,7 @@ class PostSerialData():
 				self.get_info(data)		
 			else:
 				print "formato invalido, provavelmente no numero de parametros"
-			
+
 if __name__ == "__main__":
-	teste = PostSerialData("ttyUSB0", 9600, "http://posttestserver.com/post.php")
+	teste = PostSerialData("ttyUSB0", 9600, "http://rcsr.p.ht/concretid/modulos/peca.update.hw.php")
 	teste.start_posting() 
