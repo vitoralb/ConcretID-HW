@@ -23,8 +23,8 @@ class PostSerialData():
 			data = self.ser.readline()
 			print "recebeu: " + data
 			if len(data) == 0:
-				print "aguardando novos dados"
-			elif data[0:2] == 'L:' and data.count(",") == 2 and data[-1] ==";":
+				print('')
+			elif data[0:2] == 'L:': #and data[-1] ==";": #and data.count(",") == 2 and
 				self.post_location(data)		
 			else:
 				print "comando invalido"
