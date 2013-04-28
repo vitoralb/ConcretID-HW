@@ -17,9 +17,9 @@ long latitude, longitude;
 
 // Variables will change:
 int ledState = HIGH;         // the current state of the output pin
-int buttonState = LOW;             // the current reading from the input pin
-int buttonStateBuffer = LOW;    // Identificar se o usuário demorou apertando o botão...
-int lastButtonState = LOW;   // the previous reading from the input pin
+int buttonState = HIGH;             // the current reading from the input pin
+int buttonStateBuffer = HIGH;    // Identificar se o usuário demorou apertando o botão...
+int lastButtonState = HIGH;   // the previous reading from the input pin
 
 // the following variables are long's because the time, measured in miliseconds,
 // will quickly become a bigger number than can be stored in an int.
@@ -48,11 +48,45 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT);
   // initialize the BUZZER pin as an output:
   pinMode(BUZZER_PIN, OUTPUT);   
+  
 }
 
 void loop(){
+  /* 
+  if(Serial1.available())
+  {
+     Serial.write(Serial1.read()); 
+  }
+  */
+  
+    // Ler do GPS
+    if (Serial1.available())
+    {
+      int c = Serial1.read();
+      //Serial.write(c);
+      gps.encode(c);
+
+    }  
+
+    buttonStateBuffer = buttonState;
+      
+    gps.get_position(&latitude, &longitude, &fix_age);
+    if (fix_age == TinyGPS::GPS_INVALID_AGE){
+      //Serial.println("No fix detected");
+      digitalWrite(LED_PIN, LOW); 
+    }
+    else if (fix_age > 5000){
+      //Serial.println("Warning: possible stale data!");
+      digitalWrite(LED_PIN, LOW); 
+    }
+    else
+    {
+      digitalWrite(LED_PIN, HIGH);
+    }
+
   // read the state of the switch into a local variable:
   int reading = digitalRead(BUTTON_PIN);
+
 
   // check to see if you just pressed the button ------- DEBOUNCE
   // (i.e. the input went from LOW to HIGH),  and you've waited 
@@ -66,12 +100,7 @@ void loop(){
   if ((millis() - lastDebounceTime) > debounceDelay) {
     // whatever the reading is at, it's been there for longer
     // than the debounce delay, so take it as the actual current state:
-
-    // if the button state has changed:
-    if (reading != buttonState) {
       buttonState = reading;
-      buttonStateBuffer = reading;
-    }
   }
   
  
@@ -82,40 +111,18 @@ void loop(){
   
   // check if the pushbutton is pressed.
   // if it is, the buttonState is HIGH and IT IS A TRASITION!
-  if (buttonState == HIGH && buttonStateBuffer == LOW) {     
+  if (buttonState == LOW && buttonStateBuffer == HIGH) {     
     // turn LED on:    
     digitalWrite(BUZZER_PIN, HIGH);
-    delay (500);
+    delay (300);
     digitalWrite(BUZZER_PIN, LOW); 
-    
-    // Ler do GPS
-    while (Serial1.available())
-    {
-      int c = Serial1.read();
-      if (gps.encode(c))
-      {
-        // process new gps info here
-        gps.get_position(&latitude, &longitude, &fix_age);
-        if (fix_age == TinyGPS::GPS_INVALID_AGE){
-          Serial.println("No fix detected");
-          digitalWrite(LED_PIN, LOW); 
-        }
-        else if (fix_age > 5000){
-          Serial.println("Warning: possible stale data!");
-          digitalWrite(LED_PIN, LOW); 
-        }
-        else
-        {
-          Serial.println("Data is current.");
+
+    // process new gps info here
+      Serial.println("Data is current.");
           Serial.print("Latitude:  "); 
           Serial.println(latitude);
           Serial.print("Longitude:  "); 
           Serial.println(longitude);
-          digitalWrite(LED_PIN, HIGH);
-          
-          // Enviar pela Serial0 para o CC2530
-        }
-      }
-    }  
+             
   }  
 }
