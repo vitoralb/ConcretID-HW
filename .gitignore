@@ -57,6 +57,7 @@ contiki-cc2530dk.lib
 *.cdb
 *.banks
 *.sensinode
+*.cc2530dk
 
 # VC++ build artifacts
 *.exp

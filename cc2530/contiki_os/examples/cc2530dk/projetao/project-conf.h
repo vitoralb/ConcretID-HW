@@ -1,0 +1,10 @@
+
+#ifndef PROJECT_CONF_H_
+#define PROJECT_CONF_H_
+
+#define UIP_CONF_ICMP6        1
+#define CC2530_RF_CONF_HAS_CC2591 1
+#define CC2530_RF_CONF_USE_HGM 1
+//#define CC2530_RF_CONF_TX_POWER 0x05
+
+#endif /* PROJECT_CONF_H_ */
