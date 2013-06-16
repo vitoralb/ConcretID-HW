@@ -22,7 +22,7 @@ AUTOSTART_PROCESSES(&com_process);
 #define RID_SIZE 4 // >= 2, CmpRid depends on
 #define RID_BLOCKS 8
 #define RID_QTY_PER_BLOCK 16
-#define RID_QTY (RID_QTY_PER_BLOCK*RID_BLOCKS)
+#define RID_QTY (RID_QTY_PER_BLOCK*RID_BLOCKS) // se aumentar muito, lembrar de trocar pro uint16_t nas funcoes
 #define PACKAGE_HEAD (RID_SIZE+1)
 #define CONN_PORT 2570 // 0x0A0A
 
@@ -39,6 +39,8 @@ AUTOSTART_PROCESSES(&com_process);
 #define PACKAGE_M 'P'
 #define IDENTIFIED_PACKAGE_M 'I'
 #define MESH_M 'M'
+#define COMMAND_M 'C'
+#define NEIGHBOR_REQUEST_M 'N'
 
 #define MESH_HEAD_SIZE (UID_SIZE+1)
 
@@ -51,6 +53,8 @@ int32_t curTime = 0; // 120 anos
 void puts0(char*, uint16_t);
 #define uip_ipaddr_copy(a,b) memcpy(a,b,sizeof(uip_ipaddr_t))
 
+UID_T blocked;
+
 // --------------------- Rand ID ---------------------------
 //#define CmpRid(a,b) ((a)[0]==(b)[0]&&(a)[1]==(b)[1]&&(a)[2]==(b)[2]&&(a)[3]==(b)[3])
 //#define CmpRid(a,b) (memcmp(a,b,RID_SIZE) == 0)
@@ -62,6 +66,7 @@ uint8_t lastRid[RID_BLOCKS] = {0};
 uint8_t existsRid(const uint8_t * h){
 	static uint8_t i, block, ret;
 	block = h[1]%RID_BLOCKS*RID_QTY_PER_BLOCK;
+	printf("e: %d %d\n", (uint16_t)block, (uint16_t)(block+RID_QTY_PER_BLOCK));
 	ret = 0;
 	for( i = 0 ; i < RID_QTY_PER_BLOCK ; ++i ) {
 		if( CmpRid1(ridTable[block+i], h) ) {
@@ -74,8 +79,10 @@ uint8_t existsRid(const uint8_t * h){
 void registerRid(const uint8_t * h){
 	static uint8_t block;
 	block = h[1]%RID_BLOCKS;
-	memcpy(ridTable[lastRid[block]], h, RID_SIZE);
-	lastRid[block] = (lastRid[block]+1)%RID_QTY;
+	if( CmpRid(ridTable[block*RID_QTY_PER_BLOCK+lastRid[block]], h) ) return;
+	lastRid[block] = (lastRid[block]+1)%RID_QTY_PER_BLOCK;
+	printf("r: %d %d %d\n", (uint16_t)block, (uint16_t)(block*RID_QTY_PER_BLOCK), (uint16_t)(block*RID_QTY_PER_BLOCK+lastRid[block]));
+	memcpy(ridTable[block*RID_QTY_PER_BLOCK+lastRid[block]], h, RID_SIZE);
 }
 void createRid(uint8_t * h) {
 	uint8_t j;
@@ -114,6 +121,11 @@ iptable_t * findTableByIp(const uip_ipaddr_t * ip) {
 void registerIp(const void * ip, const void * link, const char * d) {
 	static iptable_t * ipt;
 	ipt = findTableByIp(ip);
+	printf("registrando: %s, ", d);
+	PRINT6ADDR(ip);
+	printf(" - ");
+	PRINT6ADDR(link);
+	puts("");
 	if( !ipt ) {
 		ipt = iptable+lastIp;
 		lastIp = (lastIp+1)%IPTABLE_SIZE;
@@ -150,10 +162,10 @@ void sharePackage(const uint8_t * data, uint16_t len) {
 	SharePackage(data,len);
 }
 
-void * initPackage(char * d, char t) {
+char * initPackage(char * d, char t) {
 	createRid(d);
 	d[PACKAGE_HEAD-1] = t;
-	if( t == IDENTIFIED_PACKAGE_M ) {
+	if( t == IDENTIFIED_PACKAGE_M || t == COMMAND_M ) {
 		memcpy(d+PACKAGE_HEAD, myIp, UID_SIZE);
 		return d+PACKAGE_HEAD+UID_SIZE;
 	}
@@ -231,7 +243,7 @@ void forward(char * data, uint16_t len) {
 	static iptable_t * ipt;
 	if( len < PACKAGE_HEAD + MESH_HEAD_SIZE ) return; // invalid
 	if( len >= PACKAGE_HEAD + MESH_HEAD_SIZE + 1 + UID_SIZE
-			&& data[PACKAGE_HEAD+MESH_HEAD_SIZE] == IDENTIFIED_PACKAGE_M ) {
+			&& data[PACKAGE_HEAD+MESH_HEAD_SIZE] == IDENTIFIED_PACKAGE_M ) { // || COMMAND_M FIXME
 		registerIp(data+(PACKAGE_HEAD+MESH_HEAD_SIZE+1), &UIP_IP_BUF->srcipaddr, NULL);
 	}
 	if( ipt = findTableByIp((uip_ipaddr_t*)(data+PACKAGE_HEAD)) ) {
@@ -268,6 +280,7 @@ void acknowledge(char * data) {
 	for( i = 0 ; i < SENDOUT_SIZE ; ++i ) {
 		if( sendOut[i].timeLeft > 0 && CmpRid(data, sendOut[i].data) ) {
 			// ack recebido
+			printf("ack recebido...\n");
 			sendOut[i].timeLeft = 0;
 			return;
 		}
@@ -350,16 +363,18 @@ void puts0(const char * d, uint16_t size) {
 }
 void printbyte0(unsigned char * d, uint16_t len){
 	while(len--) {
-		if( (*d&15) < 10 ) uart0_writeb((*d&0xf)+'0');
-		else uart0_writeb((*d&0xf)-10+'A');
 		if( (*d>>4) < 10 ) uart0_writeb((*d>>4)+'0');
 		else uart0_writeb((*d>>4)-10+'A');
+		if( (*d&15) < 10 ) uart0_writeb((*d&0xf)+'0');
+		else uart0_writeb((*d&0xf)-10+'A');
 		d++;
 	}
 }
 
 void executeCmd(char * cmd) {
 	static char *name, *pack;
+	static uint8_t i;
+	static iptable_t *ipt;
 	cmd++;
 	switch( cmd[-1] ){
 	case 'N': // name
@@ -384,6 +399,47 @@ void executeCmd(char * cmd) {
 			memcpy(pack, cmd, BUF_SIZE-PACKAGE_HEAD);
 			safeSendByName(buf, BUF_SIZE, name);
 		}
+		break;
+	case 'D': // discovery neighborhood
+		pack = initPackage(buf, NEIGHBOR_REQUEST_M);
+		if( '0' <= cmd[0] && cmd[0] <= '9' ) {
+			pack[0] = cmd[0]-'0';
+			sharePackage(buf, PACKAGE_HEAD+1);
+		} else {
+			sharePackage(buf, PACKAGE_HEAD);
+		}
+		break;
+	case 'L': // list
+		for( i = 0 ; i < IPTABLE_SIZE ; ++i ){
+			printf("%s: ", iptable[i].name);
+			PRINT6ADDR(iptable[i].ipaddr);
+			printf(" - ");
+			PRINT6ADDR(iptable[i].link);
+			puts("");
+		}
+		break;
+	case 'B': // block
+		if( ipt = findTableByName(cmd) ) {
+			uip_ipaddr_copy(&blocked, &ipt->ipaddr);
+			puts("Done");
+		} else {
+			puts("Not found");
+		}
+		break;
+	case 'C': // command
+		name = cmd;
+		while( *cmd && *cmd != ' ' ) cmd++;
+		if( !*cmd ) return;
+		*cmd++ = 0;
+		pack = initPackage(buf, COMMAND_M);
+		if( strlen(cmd) < BUF_SIZE-(pack-buf) ) {
+			strcpy(pack, cmd);
+			safeSendByName(buf, (pack-buf)+strlen(cmd), name);
+		} else {
+			memcpy(pack, cmd, BUF_SIZE-(pack-buf) );
+			safeSendByName(buf, BUF_SIZE, name);
+		}
+		break;
 	}
 }
 #define UART_FEEDBACK 0
@@ -425,9 +481,17 @@ void tcpip_handler(void) {
 	if(!uip_newdata()) return;
 		len = uip_datalen();
 		data = uip_appdata;
+		printf("vei pac %d ", len);
+		printbyte0((char *)&UIP_IP_BUF->srcipaddr, UID_SIZE);
+		printf(": ");
+		printbyte0(data,len);
+		puts("");
+
+		if( uip_ipaddr_cmp(&blocked,&UIP_IP_BUF->srcipaddr) ) return;
 		//printbyte0(data,len);
-		if( len <= PACKAGE_HEAD ) return;
+		if( len < PACKAGE_HEAD ) return;
 		eRid = existsRid(data);
+		printf("%d %d\n", (uint16_t)eRid, (uint16_t)data[RID_SIZE]);
 		if( eRid == 1 ) return;
 		registerRid(data);
 		data += PACKAGE_HEAD;
@@ -442,6 +506,12 @@ void tcpip_handler(void) {
 			if( len < sizeof(uip_ipaddr_t) ) break;
 			registerIp(data, &UIP_IP_BUF->srcipaddr, data+sizeof(uip_ipaddr_t));
 			sharePackage(data-PACKAGE_HEAD, len+PACKAGE_HEAD);
+			break;
+		case NEIGHBOR_REQUEST_M:
+			announceMe();
+			if( len && --data[0] ) {
+				sharePackage(data-PACKAGE_HEAD, len+PACKAGE_HEAD);
+			}
 			break;
 		case NAME_REQUEST_M: // request
 			data[len] = 0;
@@ -481,6 +551,14 @@ void tcpip_handler(void) {
 			break;
 		case MESH_M: // Mesh
 			forward(data-PACKAGE_HEAD, len+PACKAGE_HEAD);
+			break;
+		case COMMAND_M: // command
+			if( eRid == 0 ) { // novo mesmo
+				executeCmd(data);
+			}
+			registerIp(data, &UIP_IP_BUF->srcipaddr, NULL);
+			sendAck(data-PACKAGE_HEAD, (uip_ipaddr_t *)data);
+			break;
 		}
 		// sempre de conn ?
 		uip_create_unspecified(&conn->ripaddr);
@@ -536,6 +614,8 @@ PROCESS_THREAD(com_process, ev, data) {
 	conn = udp_new(NULL, 0, NULL);
 	if( !conn ) PRINTF("udp_new conn error.\n");
 	udp_bind(conn, UIP_HTONS(CONN_PORT));
+
+	printf("Oi, %s\n", myName);
 
 	while(1) {
 		PROCESS_YIELD();
