@@ -567,7 +567,7 @@ void tcpip_handler(void) {
 
 // ----------------------------- MAIN -------------
 
-void timeout_handler(void) {
+static void timeout_handler(void) {
 	curTime++;
 	//if( curTime % ANNOUNCE_TIME == 0 ) announceMe();
 	checkSendOutAll();
