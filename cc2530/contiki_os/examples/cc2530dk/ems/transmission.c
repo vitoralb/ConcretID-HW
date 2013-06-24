@@ -11,7 +11,7 @@
 
 uid_table_t uid_table[UID_TABLE_SIZE];
 uint8_t table_order[UID_TABLE_SIZE], last_table;
-#define NEIGHBORHOOD_HEAD_SIZE 8
+#define NEIGHBORHOOD_HEAD_SIZE 4
 
 // ---------------- DEPENDENT -------------------
 static void get_self_uid(uid_t * uid) {
@@ -20,7 +20,7 @@ static void get_self_uid(uid_t * uid) {
 		state = uip_ds6_if.addr_list[i].state;
 		if(uip_ds6_if.addr_list[i].isused && (state == ADDR_TENTATIVE || state
 				== ADDR_PREFERRED)) {
-			printf("One of: ");
+			printf("An ip: ");
 			UID_PRINT(&uip_ds6_if.addr_list[i].ipaddr);
 			printf("\n");
 			memcpy(uid, &uip_ds6_if.addr_list[i].ipaddr, sizeof(uip_ipaddr_t));
@@ -115,15 +115,15 @@ static uint8_t new_neighbor(uid_t * uid) {
 
 FUNCTION_PREFIX void register_neighbor(uid_t * uid) {
 	static uint8_t hh, loc;
-	printf("Registering neighbor ");
-	UID_PRINT(uid);
+	//printf("Registering neighbor ");
+	//UID_PRINT(uid);
 	loc = find_neighbor(uid);
 	if( Valid_num(loc) ) {
 		neighbor_time[loc] = 0;
 	} else {
 		loc = new_neighbor(uid);
 	}
-	printf(" in %hhu\n", loc);
+	//printf(" in %hhu\n", loc);
 }
 
 FUNCTION_PREFIX uint8_t find_neighbor(uid_t * uid) {
@@ -194,8 +194,7 @@ FUNCTION_PREFIX void promote_uid_table(const uid_table_t * uidt){
 FUNCTION_PREFIX uint16_t send_package_by_table(package_t * package, uint16_t size, const uid_table_t * uidt) {
 	static uint16_t i;
 	static intermediate_head_t * interm;
-	if( UID_CMP(&uidt->uid, &uidt->link) ) {
-		printf("Sending directly\n");
+	if( UID_CMP(&uidt->uid, &neighbor[uidt->link]) ) {
 		if( package->flags&PACKAGE_INTERMEDIATE ) {
 			interm = (intermediate_head_t *)package->data;
 			size -= sizeof(intermediate_head_t) + sizeof(package_t);
@@ -206,9 +205,7 @@ FUNCTION_PREFIX uint16_t send_package_by_table(package_t * package, uint16_t siz
 			size += sizeof(package_t);
 		}
 	} else { // uid != link
-		printf("Sending by mesh\n");
 		if( ~package->flags&PACKAGE_INTERMEDIATE ) {
-			printf("Making mesh\n");
 			interm = (intermediate_head_t *)package->data;
 			size -= sizeof(package_t);
 			for( i = size-1 ; Valid_num(i)  ; --i ) {
@@ -221,7 +218,7 @@ FUNCTION_PREFIX uint16_t send_package_by_table(package_t * package, uint16_t siz
 	}
 	i = uidt - uid_table;
 	if( i != 0 ) Swap_uint8_t(table_order[i], table_order[i-1]);
-	Send_package(package, size, &uidt->link);
+	Send_package(package, size, &neighbor[uidt->link]);
 	return size;
 }
 

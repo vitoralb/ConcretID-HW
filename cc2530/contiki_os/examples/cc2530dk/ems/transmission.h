@@ -15,7 +15,7 @@ typedef struct uid_table_s {
 } uid_table_t;
 
 #define UID_TABLE_SIZE 4
-#define NEIGHBORHOOD_SIZE 16
+#define NEIGHBORHOOD_SIZE 8
 extern uid_t neighbor[NEIGHBORHOOD_SIZE];
 
 extern uid_table_t uid_table[UID_TABLE_SIZE];

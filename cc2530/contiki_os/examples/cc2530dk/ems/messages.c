@@ -14,6 +14,8 @@
 #include "util.h"
 #include <stdio.h>
 
+#define BUFFER_PROCESS_SIZE 140
+
 #define BLOCKED_LIST_SIZE 3
 #define BUFFER_SIZE \
 	(sizeof(package_t) + sizeof(intermediate_head_t) + sizeof(identified_head_t) + sizeof(encrypted_head_t) \
@@ -25,7 +27,7 @@ FUNCTION_PREFIX void send_ack(package_t * pkg){
 	static package_t * package;
 	static uid_table_t * uidt;
 	if( pkg->flags & PACKAGE_IDENTIFIED ) {
-		if( uidt = find_table_by_uid(&((identified_head_t *)package->data)->src) ) {
+		if( uidt = find_table_by_uid(&((identified_head_t *)pkg->data)->src) ) {
 			package = (package_t *) messages_buffer;
 			make_package_head(package, 0, PACKAGE_ACK);
 			memcpy(package->data, &pkg->rid, RID_SIZE);
@@ -54,7 +56,6 @@ FUNCTION_PREFIX void announce_me_to(uid_t * uid) {
 	static package_t * package;
 	static uid_table_t * uidt;
 	uidt = find_table_by_uid(uid);
-	printf("announcing me?\n");
 	if( !uidt ) return ; // error ?
 	package = (package_t *) messages_buffer;
 	make_package_head(package, PACKAGE_IDENTIFIED, PACKAGE_ANNOUNCEMENT);
@@ -140,28 +141,25 @@ FUNCTION_PREFIX uint8_t is_blocked(uid_t * uid) {
 	return 0;
 }
 
-char lala[10];
-
 FUNCTION_PREFIX void process_package(package_t * package, uint16_t size, uid_t * src) {
 	static uint8_t * data;
 	static uint8_t e_rid, src_as_neighbor;
 	static uint16_t len; // size without heads
 	static identified_head_t * ident;
+	static uint8_t buffer[BUFFER_PROCESS_SIZE];
 	if( size < sizeof(package_t) ) return; // invalid
+	if( size > BUFFER_PROCESS_SIZE ) return;
 	if( is_blocked(src) ) return;
 	e_rid = exists_rid(&package->rid);
 	if( e_rid == 1 ) return ; // received
 	src_as_neighbor = find_neighbor(src);
 
-	if( size < sizeof(package_t) ) return; // invalid
-	len = size - sizeof(package_t);
-	sprintf(lala,"%Pac: hhx %hhx", package->type&MASK_TYPE,package->flags&~MASK_TYPE);
-	if( (package->type&MASK_TYPE) != PACKAGE_BROADCAST_MSG ) send_broadcast_msg(lala);
+	memcpy(buffer, package, size);
+	package = (package_t *)buffer;
+
 	if( package->flags&PACKAGE_INTERMEDIATE ) {
 		static intermediate_head_t * interm;
 		static uid_table_t * uidt;
-		printf("Meshing...\n");
-		send_broadcast_msg("Oi!");
 		if( size < sizeof(package_t) + sizeof(intermediate_head_t) ) return; // invalid
 		register_rid(&package->rid);
 
@@ -176,7 +174,6 @@ FUNCTION_PREFIX void process_package(package_t * package, uint16_t size, uid_t *
 					// broken path ?
 				}
 			}
-			send_broadcast_msg("Foi?");
 			send_package_by_table(package, size, uidt);
 		} else {
 			/*
@@ -192,6 +189,9 @@ FUNCTION_PREFIX void process_package(package_t * package, uint16_t size, uid_t *
 		}
 		return;
 	}
+
+	if( size < sizeof(package_t) ) return; // invalid
+	len = size - sizeof(package_t);
 
 	if( package->flags&PACKAGE_IDENTIFIED ) {
 		if( len < sizeof(identified_head_t) ) return; // invalid
@@ -265,7 +265,8 @@ FUNCTION_PREFIX void process_package(package_t * package, uint16_t size, uid_t *
 		} else {
 			printf("new msg: ");
 		}
-		printf("%.*s", len, data);
+		Print_at_most(data,len);
+		puts("");
 	} break;
 	case PACKAGE_MSG_TO:{
 		if( len < UID_SIZE ) return ; // invalid
@@ -278,14 +279,22 @@ FUNCTION_PREFIX void process_package(package_t * package, uint16_t size, uid_t *
 			} else {
 				printf("new msg: ");
 			}
-			printf("%.*s", len-UID_SIZE, data+UID_SIZE);
+			Print_at_most(data+UID_SIZE,len-UID_SIZE);
+			puts("");
 		} else {
 			send_package(package, size, &broadcast_uid);
 		}
 	} break;
 	case PACKAGE_BROADCAST_MSG:{
-		printf("broadcast msg: ");
+		if( ident ) {
+			printf("broadcast msg from ");
+			UID_PRINT(&ident->src);
+			printf(": ");
+		} else {
+			printf("broadcast msg: ");
+		}
 		Print_at_most(data, len);
+		puts("");
 		send_package(package, size, &broadcast_uid);
 	} break;
 	case PACKAGE_NAME_REQUEST:{

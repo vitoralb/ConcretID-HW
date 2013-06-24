@@ -20,12 +20,12 @@ static void make_name_from_mac(char * name) {
 	j = 1;
 	rem = 0;
 	for( i = 0 ; i < MAC_SIZE ; ++i, ++macp ) {
-		rem = (rem<<8) + *macp++;
+		rem = (rem<<8) + *macp;
 		if( ++j >= NAME_SIZE ) return;
 		*name++ = consonants[rem%20];
 		rem /= 20;
 		if( ++j >= NAME_SIZE ) return;
-		*name++ = vowels[rem/5];
+		*name++ = vowels[rem%5];
 		rem /= 5;
 	}
 	if( ++j >= NAME_SIZE ) return;

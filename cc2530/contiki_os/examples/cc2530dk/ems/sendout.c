@@ -16,15 +16,15 @@
 
 typedef struct sendout_package_s {
 	union {
-		package_t package;
-		uint8_t buffer[SENDOUT_BUFFER_SIZE];
-	};
-	uint16_t size;
-	union {
 		uid_t uid;
 		char name[NAME_SIZE];
 	};
 	int8_t time;
+	uint16_t size;
+	union {
+		package_t package;
+		uint8_t buffer[SENDOUT_BUFFER_SIZE];
+	};
 } sendout_package_t;
 
 sendout_package_t sendout_package[SENDOUT_QTY];
@@ -32,7 +32,7 @@ sendout_package_t sendout_package[SENDOUT_QTY];
 
 FUNCTION_PREFIX uint8_t acknowledge(rid_t * rid){
 	static uint8_t i;
-	for( i = 0 ; i < SENDOUT_QTY ; ++i ) if( *rid == sendout_package[i].package.rid ) {
+	for( i = 0 ; i < SENDOUT_QTY ; ++i ) if( !((*rid^sendout_package[i].package.rid)&RID_FIXED) ) {
 		sendout_package[i].time = 0;
 		return 1;
 	}
@@ -60,6 +60,7 @@ FUNCTION_PREFIX void check_send_out() {
 			sendout_package[i].time--;
 			if( sendout_package[i].time%me.time_to_send == 0 ) {
 				if( uidt = find_table_by_uid(&sendout_package[i].uid) ) {
+					RID_INC(&sendout_package[i].package.rid);
 					sendout_package[i].size = send_package_by_table(&sendout_package[i].package, sendout_package[i].size, uidt);
 				} else {
 					send_uid_request(&sendout_package[i].uid);
